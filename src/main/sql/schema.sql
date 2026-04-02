@@ -238,7 +238,7 @@ create table genotype2phenotype
 (
     id                int auto_increment primary key,
     gene_symbol       varchar(20)  not null,
-    diplotype         varchar(50)  not null,
+    diplotype         varchar(100) not null,
     phenotype         varchar(100) not null,
     activity_score    varchar(20)  null,
     function_category varchar(100) null

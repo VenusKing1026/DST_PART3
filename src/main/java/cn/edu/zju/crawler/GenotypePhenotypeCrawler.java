@@ -8,6 +8,8 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.sql.PreparedStatement;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 将 genotype_to_phenotype.csv 导入 genotype2phenotype 表。
@@ -20,6 +22,26 @@ public class GenotypePhenotypeCrawler extends BaseCrawler {
     private static final String SQL =
             "INSERT INTO genotype2phenotype (gene_symbol, diplotype, phenotype, " +
             "activity_score, function_category) VALUES (?, ?, ?, ?, ?)";
+
+    /** 支持引号包裹字段的 CSV 行解析（处理字段内含逗号的情况）。 */
+    private String[] parseCsvLine(String line) {
+        List<String> fields = new ArrayList<>();
+        boolean inQuotes = false;
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
+            if (c == '"') {
+                inQuotes = !inQuotes;
+            } else if (c == ',' && !inQuotes) {
+                fields.add(sb.toString());
+                sb = new StringBuilder();
+            } else {
+                sb.append(c);
+            }
+        }
+        fields.add(sb.toString());
+        return fields.toArray(new String[0]);
+    }
 
     public void doImport() {
         log.info("Starting import of {}", CSV);
@@ -38,7 +60,7 @@ public class GenotypePhenotypeCrawler extends BaseCrawler {
                 boolean header = true;
                 while ((line = reader.readLine()) != null) {
                     if (header) { header = false; continue; }
-                    String[] cols = line.split(",", -1);
+                    String[] cols = parseCsvLine(line);
                     if (cols.length < 5) continue;
                     ps.setString(1, cols[0].trim());  // gene_symbol
                     ps.setString(2, cols[1].trim());  // diplotype
