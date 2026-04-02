@@ -97,18 +97,28 @@ public class MatchingController {
     private List<MatchingResult> runPgxPipeline(int sampleId) {
         // Step 1: 获取功能性 rsID（按基因分组）
         Map<String, List<String>> geneRsIds = annovarDao.getRsIdsPerGene(sampleId);
+        log.info("[PGx] sampleId={} | Step1: found {} genes with functional rsIDs: {}",
+                sampleId, geneRsIds.size(), geneRsIds.keySet());
+
         List<MatchingResult> results = new ArrayList<>();
 
         for (Map.Entry<String, List<String>> entry : geneRsIds.entrySet()) {
             String gene = entry.getKey();
             List<String> rsids = entry.getValue();
+            log.info("[PGx] gene={} | rsIDs: {}", gene, rsids);
 
             // Step 2: rsID -> star allele（V1: 取第一条）
             List<Genotype> genotypes = genotypeDao.findFirstByRsIds(rsids);
-            if (genotypes.isEmpty()) continue;
+            if (genotypes.isEmpty()) {
+                log.info("[PGx] gene={} | Step2: no star allele found, skipping", gene);
+                continue;
+            }
+            log.info("[PGx] gene={} | Step2: star alleles: {}",
+                    gene, genotypes.stream().map(Genotype::getStarAllele).collect(Collectors.toList()));
 
             // Step 3: 构建 diplotype
             String diplotype = buildDiplotype(genotypes);
+            log.info("[PGx] gene={} | Step3: diplotype={}", gene, diplotype);
 
             // Step 4: diplotype -> phenotype
             String phenotype = "Indeterminate";
@@ -116,6 +126,7 @@ public class MatchingController {
             if (pt != null) {
                 phenotype = pt.getPhenotype();
             }
+            log.info("[PGx] gene={} | Step4: phenotype={}", gene, phenotype);
 
             // Step 5: 按基因名查 dosing guideline，按 metabolizer 分类
             List<DosingGuideline> all = dosingGuidelineDao.findByGeneContains(gene);
@@ -127,9 +138,13 @@ public class MatchingController {
                     .filter(g -> g.getSummaryMarkdown() == null ||
                                  !g.getSummaryMarkdown().toLowerCase().contains("metabolizer"))
                     .collect(Collectors.toList());
+            log.info("[PGx] gene={} | Step5: metabolizerMatches={}, generalMatches={}",
+                    gene, metabolizerMatches.size(), generalMatches.size());
 
             results.add(new MatchingResult(gene, diplotype, phenotype, metabolizerMatches, generalMatches));
         }
+
+        log.info("[PGx] sampleId={} | pipeline complete, {} gene results", sampleId, results.size());
         return results;
     }
 
