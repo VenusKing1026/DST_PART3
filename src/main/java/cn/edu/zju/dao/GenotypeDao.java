@@ -29,11 +29,13 @@ public class GenotypeDao extends BaseDao {
         for (int i = 0; i < rsids.size(); i++) {
             placeholders.add("?");
         }
+        // 子查询取每个 rsid 对应 id 最小的行，兼容 MySQL ONLY_FULL_GROUP_BY 模式
         String sql = "SELECT id, gene_symbol, rsid, chromosome, position, ref_allele, alt_allele, " +
                 "star_allele, allele_function, is_required " +
                 "FROM variants2genotype " +
-                "WHERE rsid IN (" + placeholders + ") " +
-                "GROUP BY rsid " +
+                "WHERE id IN (" +
+                "  SELECT MIN(id) FROM variants2genotype WHERE rsid IN (" + placeholders + ") GROUP BY rsid" +
+                ") " +
                 "ORDER BY id ASC";
         List<Genotype> result = new ArrayList<>();
         DBUtils.execSQL(connection -> {

@@ -227,9 +227,9 @@ create table variants2genotype
     rsid             varchar(20)  not null,
     chromosome       varchar(10)  null,
     position         bigint       null,
-    ref_allele       varchar(10)  null,
-    alt_allele       varchar(10)  null,
-    star_allele      varchar(20)  not null,
+    ref_allele       varchar(50)  null,
+    alt_allele       varchar(50)  null,
+    star_allele      varchar(100) not null,
     allele_function  varchar(100) null,
     is_required      tinyint(1)   null
 );

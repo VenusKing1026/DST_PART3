@@ -8,19 +8,19 @@ public class Main {
         VariantGenotypeCrawler variantGenotypeCrawler = new VariantGenotypeCrawler();
         GenotypePhenotypeCrawler genotypePhenotypeCrawler = new GenotypePhenotypeCrawler();
 
-        // comment the step, if you have finished it
+        // // comment the step, if you have finished it
 
-        // Step 1
-        drugLabelCrawler.doCrawlerDrug();
+        // // Step 1
+        // drugLabelCrawler.doCrawlerDrug();
 
-        // Step 2
-        drugLabelCrawler.doCrawlerDrugLabel();
+        // // Step 2
+        // drugLabelCrawler.doCrawlerDrugLabel();
 
-        // Step 3
-        dosingGuidelineCrawler.doCrawlerDosingGuidelineList();
+        // // Step 3
+        // dosingGuidelineCrawler.doCrawlerDosingGuidelineList();
 
         // Step 4: import variant_to_genotype.csv -> variants2genotype table
-        variantGenotypeCrawler.doImport();
+        // variantGenotypeCrawler.doImport();
 
         // Step 5: import genotype_to_phenotype.csv -> genotype2phenotype table
         genotypePhenotypeCrawler.doImport();
