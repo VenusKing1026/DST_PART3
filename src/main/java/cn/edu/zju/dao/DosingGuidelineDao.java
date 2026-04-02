@@ -40,6 +40,42 @@ public class DosingGuidelineDao extends BaseDao {
         });
 
     }
+    /**
+     * 查找 name 或 summary_markdown 中包含基因名的 dosing guideline。
+     * 结果在 MatchingController 中进一步按 "metabolizer" 关键字分类。
+     */
+    public List<DosingGuideline> findByGeneContains(String gene) {
+        String sql = "SELECT id, obj_cls, name, recommendation, drug_id, source, " +
+                "summary_markdown, text_markdown, raw FROM dosing_guideline " +
+                "WHERE name LIKE ? OR summary_markdown LIKE ?";
+        String pattern = "%" + gene + "%";
+        List<DosingGuideline> result = new ArrayList<>();
+        DBUtils.execSQL(connection -> {
+            try {
+                PreparedStatement ps = connection.prepareStatement(sql);
+                ps.setString(1, pattern);
+                ps.setString(2, pattern);
+                ResultSet rs = ps.executeQuery();
+                while (rs.next()) {
+                    result.add(new DosingGuideline(
+                            rs.getString("id"),
+                            rs.getString("obj_cls"),
+                            rs.getString("name"),
+                            rs.getBoolean("recommendation"),
+                            rs.getString("drug_id"),
+                            rs.getString("source"),
+                            rs.getString("summary_markdown"),
+                            rs.getString("text_markdown"),
+                            rs.getString("raw")
+                    ));
+                }
+            } catch (SQLException e) {
+                log.info("findByGeneContains error", e);
+            }
+        });
+        return result;
+    }
+
     public List<DosingGuideline> findAll() {
         List<DosingGuideline> dosingGuidelines = new ArrayList<>();
         DBUtils.execSQL(connection -> {

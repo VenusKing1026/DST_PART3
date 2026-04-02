@@ -8,7 +8,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.StringJoiner;
 
 public class AnnovarDao extends BaseDao {
@@ -44,6 +46,38 @@ public class AnnovarDao extends BaseDao {
                 e.printStackTrace();
             }
         });
+    }
+
+    /**
+     * 返回样本中功能性变异的 rsID，按基因分组。
+     * 过滤条件：exonic 区域、非同义突变、avsnp150 不为 '.' 或空。
+     * 注意：Gene.refGene 含分号（如 GENE1;GENE2）时暂不拆分，作为 TODO 记录。
+     */
+    public Map<String, List<String>> getRsIdsPerGene(int sampleId) {
+        String sql = "SELECT `Gene.refGene`, avsnp150 FROM annovar " +
+                "WHERE sample_id = ? " +
+                "AND `Func.refGene` = 'exonic' " +
+                "AND `ExonicFunc.refGene` != 'synonymous SNV' " +
+                "AND avsnp150 IS NOT NULL AND avsnp150 != '.'";
+        Map<String, List<String>> geneRsIds = new HashMap<>();
+        DBUtils.execSQL(connection -> {
+            try {
+                PreparedStatement ps = connection.prepareStatement(sql);
+                ps.setInt(1, sampleId);
+                ResultSet rs = ps.executeQuery();
+                while (rs.next()) {
+                    String gene = rs.getString(1);
+                    String rsid = rs.getString(2);
+                    if (gene == null || gene.isBlank()) continue;
+                    // TODO: 含分号的多基因注释（如 GENE1;GENE2）暂跳过，Phase 2 处理
+                    if (gene.contains(";")) continue;
+                    geneRsIds.computeIfAbsent(gene, k -> new ArrayList<>()).add(rsid);
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        });
+        return geneRsIds;
     }
 
     public List<String> getRefGenes(int sampleId) {

@@ -51,6 +51,21 @@ public class SampleDao extends BaseDao {
         return samples;
     }
 
+    public void updateMatchingStatus(int sampleId, String status) {
+        DBUtils.execSQL(connection -> {
+            try {
+                PreparedStatement ps = connection.prepareStatement(
+                        "UPDATE sample SET matching_status = ?, matched_at = ? WHERE id = ?");
+                ps.setString(1, status);
+                ps.setTimestamp(2, new Timestamp(new Date().getTime()));
+                ps.setInt(3, sampleId);
+                ps.executeUpdate();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
     public Sample findById(int id) {
         AtomicReference<Sample> sample = new AtomicReference<>();
         DBUtils.execSQL(connection -> {
