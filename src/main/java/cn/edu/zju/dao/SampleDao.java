@@ -16,13 +16,18 @@ public class SampleDao extends BaseDao {
         AtomicInteger key = new AtomicInteger();
         DBUtils.execSQL(connection -> {
             try {
-                PreparedStatement preparedStatement = connection.prepareStatement("insert into sample(created_at, uploaded_by) values (?,?)", Statement.RETURN_GENERATED_KEYS);
+                PreparedStatement preparedStatement = connection.prepareStatement(
+                        "insert into sample(created_at, uploaded_by) values (?,?)",
+                        Statement.RETURN_GENERATED_KEYS
+                );
                 preparedStatement.setTimestamp(1, new Timestamp(new Date().getTime()));
                 preparedStatement.setString(2, uploadedBy);
+
                 preparedStatement.executeUpdate();
-                ResultSet generatedKeys = preparedStatement.getGeneratedKeys();
-                while (generatedKeys.next()) {
-                    key.set(generatedKeys.getInt(1));
+
+                ResultSet rs = preparedStatement.getGeneratedKeys();
+                if (rs.next()) {
+                    key.set(rs.getInt(1));
                 }
             } catch (SQLException e) {
                 e.printStackTrace();
@@ -55,7 +60,9 @@ public class SampleDao extends BaseDao {
         AtomicReference<Sample> sample = new AtomicReference<>();
         DBUtils.execSQL(connection -> {
             try {
-                PreparedStatement preparedStatement = connection.prepareStatement("select id, created_at, uploaded_by from sample where id = ?");
+                PreparedStatement preparedStatement = connection.prepareStatement(
+                        "select id, created_at, uploaded_by from sample where id = ?"
+                );
                 preparedStatement.setInt(1, id);
                 ResultSet resultSet = preparedStatement.executeQuery();
                 if (resultSet.next()) {
