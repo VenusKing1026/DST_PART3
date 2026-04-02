@@ -214,7 +214,33 @@ create table sample
 (
     id int auto_increment
         primary key,
-    created_at datetime null,
-    uploaded_by text null
+    created_at      datetime     null,
+    uploaded_by     text         null,
+    matching_status varchar(20)  null default 'pending',
+    matched_at      datetime     null
+);
+
+create table variants2genotype
+(
+    id               int auto_increment primary key,
+    gene_symbol      varchar(20)  not null,
+    rsid             varchar(20)  not null,
+    chromosome       varchar(10)  null,
+    position         bigint       null,
+    ref_allele       varchar(10)  null,
+    alt_allele       varchar(10)  null,
+    star_allele      varchar(20)  not null,
+    allele_function  varchar(100) null,
+    is_required      tinyint(1)   null
+);
+
+create table genotype2phenotype
+(
+    id                int auto_increment primary key,
+    gene_symbol       varchar(20)  not null,
+    diplotype         varchar(50)  not null,
+    phenotype         varchar(100) not null,
+    activity_score    varchar(20)  null,
+    function_category varchar(100) null
 );
 
