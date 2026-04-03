@@ -58,40 +58,93 @@
             <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                 <h2>Matching Result</h2>
             </div>
+
+            <%-- Sample Info：同学负责，暂不改动 --%>
             <div class="table-responsive">
                 <div class="alert alert-info" role="alert">
                     <h4 class="alert-heading">Sample Info #${sample.id}</h4>
                     <div>Uploaded at: ${sample.createdAt}</div>
                     <div>Uploaded by: ${sample.uploadedBy}</div>
-
                 </div>
             </div>
-            <div class="table-responsive">
-                <h4>Matched Drug Labels</h4>
-                <c:if test="${!matched.isEmpty()}">
-                    <table class="table table-striped table-sm">
-                        <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Name</th>
-                            <th>Source</th>
-                            <th>Summary</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <c:forEach items="${matched}" var="item" varStatus="loop">
-                            <tr>
-                                <td>${loop.index + 1}</td>
-                                <td>${item.name}</td>
-                                <td>${item.source}</td>
-                                <td>${item.summaryMarkdown}</td>
-                            </tr>
-                        </c:forEach>
 
-                        </tbody>
-                    </table>
-                </c:if>
-            </div>
+            <%-- PGx Matching Results --%>
+            <c:choose>
+                <c:when test="${empty matchingResults}">
+                    <div class="alert alert-warning" role="alert">
+                        No pharmacogenomics matches found for this sample.
+                    </div>
+                </c:when>
+                <c:otherwise>
+                    <c:forEach items="${matchingResults}" var="result">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <strong>${result.gene}</strong>
+                                &nbsp;|&nbsp; Diplotype: <code>${result.diplotype}</code>
+                                &nbsp;|&nbsp; Phenotype: <span class="badge badge-primary">${result.phenotype}</span>
+                            </div>
+                            <div class="card-body">
+
+                                <%-- Metabolizer-specific Guidelines --%>
+                                <c:if test="${!empty result.metabolizerMatches}">
+                                    <h6 class="text-danger">Metabolizer-specific Guidelines (${result.metabolizerMatches.size()})</h6>
+                                    <div class="table-responsive mb-3">
+                                        <table class="table table-striped table-sm">
+                                            <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Name</th>
+                                                <th>Source</th>
+                                                <th>Summary</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            <c:forEach items="${result.metabolizerMatches}" var="item" varStatus="loop">
+                                                <tr>
+                                                    <td>${loop.index + 1}</td>
+                                                    <td>${item.name}</td>
+                                                    <td>${item.source}</td>
+                                                    <td>${item.summaryMarkdown}</td>
+                                                </tr>
+                                            </c:forEach>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </c:if>
+
+                                <%-- General Drug Information --%>
+                                <c:if test="${!empty result.generalMatches}">
+                                    <h6 class="text-secondary">General Drug Information (${result.generalMatches.size()})</h6>
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-sm">
+                                            <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Name</th>
+                                                <th>Source</th>
+                                                <th>Summary</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            <c:forEach items="${result.generalMatches}" var="item" varStatus="loop">
+                                                <tr>
+                                                    <td>${loop.index + 1}</td>
+                                                    <td>${item.name}</td>
+                                                    <td>${item.source}</td>
+                                                    <td>${item.summaryMarkdown}</td>
+                                                </tr>
+                                            </c:forEach>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </c:if>
+
+                            </div>
+                        </div>
+                    </c:forEach>
+                </c:otherwise>
+            </c:choose>
+
         </main>
     </div>
 </div>
