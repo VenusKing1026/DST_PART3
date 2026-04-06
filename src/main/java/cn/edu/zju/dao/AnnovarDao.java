@@ -48,6 +48,7 @@ public class AnnovarDao extends BaseDao {
                         connection.commit();
                     }
                 }
+                preparedStatement.executeBatch();
                 connection.commit();
             } catch (SQLException e) {
                 e.printStackTrace();
