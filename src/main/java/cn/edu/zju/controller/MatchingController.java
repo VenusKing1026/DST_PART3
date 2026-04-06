@@ -5,6 +5,7 @@ import cn.edu.zju.bean.DrugLabel;
 import cn.edu.zju.bean.Genotype;
 import cn.edu.zju.bean.MatchingResult;
 import cn.edu.zju.bean.Phenotype;
+import cn.edu.zju.bean.ScoredAllele;
 import cn.edu.zju.bean.Sample;
 import cn.edu.zju.dao.AnnovarDao;
 import cn.edu.zju.dao.DosingGuidelineDao;
@@ -107,17 +108,17 @@ public class MatchingController {
             List<String> rsids = entry.getValue();
             log.info("[PGx] gene={} | rsIDs: {}", gene, rsids);
 
-            // Step 2: rsID -> star allele（V1: 取第一条）
-            List<Genotype> genotypes = genotypeDao.findFirstByRsIds(rsids);
-            if (genotypes.isEmpty()) {
-                log.info("[PGx] gene={} | Step2: no star allele found, skipping", gene);
+            // Step 2: rsID -> star allele（V2: 打分策略）
+            List<ScoredAllele> scored = genotypeDao.findScoredAlleles(gene, rsids);
+            if (scored.isEmpty()) {
+                log.info("[PGx] gene={} | Step2: no star allele scored, skipping", gene);
                 continue;
             }
-            log.info("[PGx] gene={} | Step2: star alleles: {}",
-                    gene, genotypes.stream().map(Genotype::getStarAllele).collect(Collectors.toList()));
+            log.info("[PGx] gene={} | Step2: scored alleles (top5): {}",
+                    gene, scored.subList(0, Math.min(5, scored.size())));
 
-            // Step 3: 构建 diplotype
-            String diplotype = buildDiplotype(genotypes);
+            // Step 3: 构建 diplotype（打分最高的两个 allele）
+            String diplotype = buildDiplotypeFromScored(scored);
             log.info("[PGx] gene={} | Step3: diplotype={}", gene, diplotype);
 
             // Step 4: diplotype -> phenotype
@@ -149,15 +150,22 @@ public class MatchingController {
     }
 
     /**
-     * 从 genotype 列表构建 diplotype 字符串。
-     * - 1 个 star allele -> *1/[star]
-     * - 2+ 个 star allele -> [star1]/[star2]（数字小的在前）
+     * V2 打分策略构建 diplotype：
+     * - 所有 score = 0  → *1/*1
+     * - 只有 1 个 score > 0 → *1/top1
+     * - 2+ 个 score > 0  → top1/top2
      */
-    private String buildDiplotype(List<Genotype> genotypes) {
-        if (genotypes.size() == 1) {
-            return canonicalize("*1", genotypes.get(0).getStarAllele());
+    private String buildDiplotypeFromScored(List<ScoredAllele> scored) {
+        List<ScoredAllele> hits = scored.stream()
+                .filter(s -> s.getMatchedCount() > 0)
+                .collect(Collectors.toList());
+        if (hits.isEmpty()) {
+            return "*1/*1";
         }
-        return canonicalize(genotypes.get(0).getStarAllele(), genotypes.get(1).getStarAllele());
+        if (hits.size() == 1) {
+            return canonicalize("*1", hits.get(0).getStarAllele());
+        }
+        return canonicalize(hits.get(0).getStarAllele(), hits.get(1).getStarAllele());
     }
 
     /**
