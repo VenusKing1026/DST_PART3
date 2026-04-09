@@ -4,39 +4,38 @@ import java.util.Date;
 
 public class Sample {
     private int id;
-    private Date createdAt;
-    private String uploadedBy;
+    private int userId;
 
+    private Date createdAt;
+    private String samplingData;
+
+
+    // 无参构造
     public Sample() {
     }
 
-    public Sample(int id, Date createdAt, String uploadedBy) {
+    // 全参构造
+    public Sample(int id, int userId, Date createdAt, String samplingData, String uploadFormat) {
         this.id = id;
+        this.userId = userId;
+
         this.createdAt = createdAt;
-        this.uploadedBy = uploadedBy;
+        this.samplingData = samplingData;
+
     }
 
-    public int getId() {
-        return id;
-    }
+    // Getters and Setters
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
 
-    public void setId(int id) {
-        this.id = id;
-    }
+    public int getUserId() { return userId; }
+    public void setUserId(int userId) { this.userId = userId; }
 
-    public Date getCreatedAt() {
-        return createdAt;
-    }
 
-    public void setCreatedAt(Date createdAt) {
-        this.createdAt = createdAt;
-    }
+    public Date getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Date createdAt) { this.createdAt = createdAt; }
 
-    public String getUploadedBy() {
-        return uploadedBy;
-    }
+    public String getSamplingData() { return samplingData; }
+    public void setSamplingData(String samplingData) { this.samplingData = samplingData; }
 
-    public void setUploadedBy(String uploadedBy) {
-        this.uploadedBy = uploadedBy;
-    }
 }
