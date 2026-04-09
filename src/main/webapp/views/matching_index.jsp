@@ -60,19 +60,59 @@
             </div>
             <div class="table-responsive">
                 <form method="post" action="upload" enctype="multipart/form-data">
+
                     <div class="form-group">
-                        <label for="exampleFormControlFile1">Annovar Output</label>
-                        <input type="file" class="form-control-file" id="exampleFormControlFile1" name="annovar">
+                        <label for="input_type">Input Type</label>
+                        <select class="form-control" id="input_type" name="input_type">
+                            <option value="annovar" selected>ANNOVAR Output</option>
+                            <option value="vcf">VCF</option>
+                        </select>
+                        <small id="input_type_help" class="form-text text-muted">
+                            Upload an ANNOVAR result file, for example a multianno.txt file.
+                        </small>
                     </div>
+
+                    <div class="form-group">
+                        <label for="variant_file" id="file_label">Variant File</label>
+                        <input type="file" class="form-control-file" id="variant_file" name="variant_file">
+                        <small id="file_help" class="form-text text-muted">
+                            Supported format: .txt / .tsv for ANNOVAR output
+                        </small>
+                    </div>
+
                     <div class="form-group">
                         <label for="uploaded_by">Uploaded By</label>
-                        <input type="input" class="form-control" id="uploaded_by" name="uploaded_by">
+                        <input type="text" class="form-control" id="uploaded_by" name="uploaded_by" placeholder="Enter uploader name">
                     </div>
+
                     <button type="submit" class="btn btn-primary">Upload</button>
                 </form>
             </div>
         </main>
     </div>
 </div>
+<script>
+    const inputTypeSelect = document.getElementById("input_type");
+    const fileInput = document.getElementById("variant_file");
+    const inputTypeHelp = document.getElementById("input_type_help");
+    const fileHelp = document.getElementById("file_help");
+
+    function updateUploadHint() {
+        const type = inputTypeSelect.value;
+
+        if (type === "vcf") {
+            inputTypeHelp.textContent = "Upload a VCF file containing variant calls.";
+            fileHelp.textContent = "Supported format: .vcf";
+            fileInput.setAttribute("accept", ".vcf");
+        } else {
+            inputTypeHelp.textContent = "Upload an ANNOVAR result file, for example a multianno.txt file.";
+            fileHelp.textContent = "Supported format: .txt / .tsv for ANNOVAR output";
+            fileInput.setAttribute("accept", ".txt,.tsv,.csv");
+        }
+    }
+
+    inputTypeSelect.addEventListener("change", updateUploadHint);
+    updateUploadHint();
+</script>
 </body>
 </html>
