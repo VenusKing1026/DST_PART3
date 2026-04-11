@@ -1,5 +1,6 @@
 package cn.edu.zju.dao;
 
+import cn.edu.zju.bean.Sample;
 import cn.edu.zju.dbutils.DBUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -7,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class BaseDao {
@@ -30,4 +32,10 @@ public abstract class BaseDao {
         });
         return exists.get();
     }
+
+    public List<Sample> findAll() {
+        return List.of();
+    }
+
+
 }
