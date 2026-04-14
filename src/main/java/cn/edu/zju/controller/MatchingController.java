@@ -9,6 +9,8 @@ import cn.edu.zju.dbutils.DBUtils;
 import cn.edu.zju.servlet.DispatchServlet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import cn.edu.zju.bean.MatchingResult;
+import cn.edu.zju.dao.MatchingResultDao;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -27,6 +29,7 @@ public class MatchingController {
     private SampleDao sampleDao = new SampleDao();
     private AnnovarDao annovarDao = new AnnovarDao();
     private DrugLabelDao drugLabelDao = new DrugLabelDao();
+    private MatchingResultDao matchingResultDao = new MatchingResultDao();
 
     public void register(DispatchServlet.Dispatcher dispatcher) {
         dispatcher.registerPostMapping("/upload", this::uploadAnnovarOutput);
@@ -66,7 +69,11 @@ public class MatchingController {
         }
         List<DrugLabel> drugLabels = drugLabelDao.findAll();
         List<DrugLabel> matched = doMatch(refGenes, drugLabels);
-        request.setAttribute("matched", matched);
+
+        List<MatchingResult> results = toMatchingResults(sampleId, matched);
+        matchingResultDao.saveAll(sampleId, results);
+
+        request.setAttribute("matched", results);
         request.setAttribute("sample", sampleDao.findById(sampleId));
         request.getRequestDispatcher("/views/matching_index_search.jsp").forward(request, response);
     }
@@ -85,6 +92,20 @@ public class MatchingController {
             }
         }
         return matchedLabels;
+    }
+
+    private List<MatchingResult> toMatchingResults(Integer sampleId, List<DrugLabel> matchedLabels) {
+        List<MatchingResult> results = new ArrayList<>();
+        for (DrugLabel drugLabel : matchedLabels) {
+            MatchingResult result = new MatchingResult();
+            result.setSampleId(sampleId);
+            result.setDrugLabelId(drugLabel.getId());
+            result.setDrugName(drugLabel.getName());
+            result.setSource(drugLabel.getSource());
+            result.setSummaryMarkdown(drugLabel.getSummaryMarkdown());
+            results.add(result);
+        }
+        return results;
     }
 
     public void uploadAnnovarOutput(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {

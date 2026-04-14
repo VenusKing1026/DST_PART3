@@ -64,6 +64,10 @@
                     <div>Uploaded at: ${sample.createdAt}</div>
                     <div>Uploaded by: ${sample.uploadedBy}</div>
 
+                    <p style="margin-top: 12px;">
+                        <a href="downloadPdf?sampleId=${sample.id}" class="btn btn-primary">Download Report</a>
+                    </p>
+
                 </div>
             </div>
             <div class="table-responsive">
@@ -82,7 +86,7 @@
                         <c:forEach items="${matched}" var="item" varStatus="loop">
                             <tr>
                                 <td>${loop.index + 1}</td>
-                                <td>${item.name}</td>
+                                <td>${item.drugName}</td>
                                 <td>${item.source}</td>
                                 <td>${item.summaryMarkdown}</td>
                             </tr>

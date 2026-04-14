@@ -13,6 +13,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
+import cn.edu.zju.controller.ReportController;
 
 public class DispatchServlet extends HttpServlet {
 
@@ -54,6 +55,9 @@ public class DispatchServlet extends HttpServlet {
 
         MatchingController matchingController = new MatchingController();
         matchingController.register(dispatcher);
+
+        ReportController reportController = new ReportController();
+        reportController.register(dispatcher);
 
     }
 

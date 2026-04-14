@@ -218,3 +218,12 @@ create table sample
     uploaded_by text null
 );
 
+create table matching_result
+(
+    id int auto_increment primary key,
+    sample_id int not null,
+    drug_label_id varchar(100) not null,
+    drug_name varchar(200) null,
+    source varchar(100) null,
+    summary_markdown text null
+);
