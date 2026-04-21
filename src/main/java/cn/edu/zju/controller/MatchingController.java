@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class MatchingController {
+public class MatchingController extends BaseController {   //改动1
 
     private static final Logger log = LoggerFactory.getLogger(MatchingController.class);
 
@@ -41,7 +41,8 @@ public class MatchingController {
     }
 
     public void samples(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
-        List<Sample> samples = sampleDao.findAll();
+        int userId = getCurrentUserIdForDev();
+        List<Sample> samples = sampleDao.findByUserId(userId);  //改动2
         request.setAttribute("samples", samples);
         request.getRequestDispatcher("/views/samples.jsp").forward(request, response);
     }
@@ -67,7 +68,13 @@ public class MatchingController {
         List<DrugLabel> drugLabels = drugLabelDao.findAll();
         List<DrugLabel> matched = doMatch(refGenes, drugLabels);
         request.setAttribute("matched", matched);
-        request.setAttribute("sample", sampleDao.findById(sampleId));
+        int userId = getCurrentUserIdForDev();
+        Sample sample = sampleDao.findByIdAndUserId(sampleId, userId);
+        if (sample == null) {
+            response.sendRedirect("samples");
+            return;
+        }
+        request.setAttribute("sample", sample);   //改动3
         request.getRequestDispatcher("/views/matching_index_search.jsp").forward(request, response);
     }
 
@@ -75,7 +82,7 @@ public class MatchingController {
         List<DrugLabel> matchedLabels = new ArrayList<>();
         for (DrugLabel drugLabel : drugLabels) {
             boolean matched = false;
-            for (String gene: refGenes) {
+            for (String gene : refGenes) {
                 if (drugLabel.getSummaryMarkdown().contains(gene)) {
                     matched = true;
                 }
@@ -87,13 +94,9 @@ public class MatchingController {
         return matchedLabels;
     }
 
+    //改动4
     public void uploadAnnovarOutput(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
-        String uploadedBy = request.getParameter("uploaded_by");
-        if (uploadedBy == null || uploadedBy.isBlank()) {
-            request.setAttribute("validateError", "Uploaded by can not be blank");
-            request.getRequestDispatcher("/views/matching_index_error.jsp").forward(request, response);
-            return;
-        }
+        int userId = getCurrentUserIdForDev();
         Part requestPart = request.getPart("annovar");
         if (requestPart == null) {
             request.setAttribute("validateError", "annovar output file can not be blank");
@@ -103,7 +106,7 @@ public class MatchingController {
         InputStream inputStream = requestPart.getInputStream();
         byte[] bytes = inputStream.readAllBytes();
         String content = new String(bytes);
-        int sampleId = sampleDao.save(uploadedBy);
+        int sampleId = sampleDao.save(userId, "annovar");
         try {
             annovarDao.save(sampleId, content);
         } catch (ArrayIndexOutOfBoundsException e) {
