@@ -42,7 +42,7 @@ public class MatchingController extends BaseController {   //改动1
 
     public void samples(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
         int userId = getCurrentUserIdForDev();
-        List<Sample> samples = sampleDao.findByUserId(userId);  //改动2
+        List<Sample> samples = sampleDao.findByUser(userId);  //改动2
         request.setAttribute("samples", samples);
         request.getRequestDispatcher("/views/samples.jsp").forward(request, response);
     }
@@ -69,7 +69,7 @@ public class MatchingController extends BaseController {   //改动1
         List<DrugLabel> matched = doMatch(refGenes, drugLabels);
         request.setAttribute("matched", matched);
         int userId = getCurrentUserIdForDev();
-        Sample sample = sampleDao.findByIdAndUserId(sampleId, userId);
+        Sample sample = sampleDao.findById(sampleId, userId);
         if (sample == null) {
             response.sendRedirect("samples");
             return;

@@ -7,7 +7,7 @@ public class Sample {
     private int userId;  //关联user表的外键
 
     private Date createdAt;   //sample的创建时间
-    private String samplingData;   //sample的数据类型，有且只有两个类型，一个是VCF，一个是annovar
+    private String uploadFormat;   //sample的数据类型，有且只有两个类型，一个是VCF，一个是annovar
 
 
     // 无参构造
@@ -15,12 +15,12 @@ public class Sample {
     }
 
     // 全参构造
-    public Sample(int id, int userId, Date createdAt, String samplingData, String uploadFormat) {
+    public Sample(int id, int userId, Date createdAt, String uploadFormat) {
         this.id = id;
         this.userId = userId;
 
         this.createdAt = createdAt;
-        this.samplingData = samplingData;
+        this.uploadFormat = uploadFormat;
 
     }
 
@@ -35,7 +35,7 @@ public class Sample {
     public Date getCreatedAt() { return createdAt; }
     public void setCreatedAt(Date createdAt) { this.createdAt = createdAt; }
 
-    public String getSamplingData() { return samplingData; }
-    public void setSamplingData(String samplingData) { this.samplingData = samplingData; }
+    public String getSamplingData() { return uploadFormat; }
+    public void setSamplingData(String uploadFormat) { this.uploadFormat = uploadFormat; }
 
 }

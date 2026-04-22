@@ -15,7 +15,7 @@ public class SampleDao extends BaseDao {
     /**
      * 保存样本，关联到指定用户
      */
-    public int save(int userId, String samplingData) {
+    public int save(int userId, String uploadFormat) {
         AtomicInteger key = new AtomicInteger();
         DBUtils.execSQL(connection -> {
             try {
@@ -23,7 +23,7 @@ public class SampleDao extends BaseDao {
                 PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
                 ps.setInt(1, userId);
                 ps.setTimestamp(2, new Timestamp(new Date().getTime()));
-                ps.setString(3, samplingData);
+                ps.setString(3, uploadFormat);
                 ps.executeUpdate();
 
                 ResultSet generatedKeys = ps.getGeneratedKeys();
@@ -40,7 +40,7 @@ public class SampleDao extends BaseDao {
     /**
      * 查询当前用户的所有样本
      */
-    public List<Sample> findByUserId(int userId) {
+    public List<Sample> findByUser(int userId) {
         List<Sample> samples = new ArrayList<>();
         DBUtils.execSQL(connection -> {
             try {
@@ -81,7 +81,7 @@ public class SampleDao extends BaseDao {
     /**
      * 根据ID查询样本（带权限校验）
      */
-    public Sample findByIdAndUserId(int id, int userId) {
+    public Sample findById(int id, int userId) {
         AtomicReference<Sample> sample = new AtomicReference<>();
         DBUtils.execSQL(connection -> {
             try {
@@ -103,7 +103,7 @@ public class SampleDao extends BaseDao {
     /**
      * 不校验权限的按ID查询（谨慎使用）
      */
-    public Sample findById(int id) {
+    public Sample findByIdAndUserId(int id) {
         AtomicReference<Sample> sample = new AtomicReference<>();
         DBUtils.execSQL(connection -> {
             try {
@@ -124,7 +124,7 @@ public class SampleDao extends BaseDao {
     /**
      * 删除样本（带权限校验）
      */
-    public boolean deleteByIdAndUserId(int id, int userId) {
+    public boolean delete(int id, int userId) {
         AtomicReference<Boolean> result = new AtomicReference<>(false);
         DBUtils.execSQL(connection -> {
             try {
@@ -145,7 +145,7 @@ public class SampleDao extends BaseDao {
         int id = rs.getInt("id");
         int userId = rs.getInt("user_id");
         Date createdAt = new Date(rs.getTimestamp("created_at").getTime());
-        String samplingData = rs.getString("sampling_data");
-        return new Sample(id, userId, createdAt, samplingData);
+        String uploadFormat = rs.getString("sampling_data");
+        return new Sample(id, userId, createdAt, uploadFormat);
     }
 }
