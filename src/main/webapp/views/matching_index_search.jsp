@@ -62,7 +62,7 @@
                 <div class="alert alert-info" role="alert">
                     <h4 class="alert-heading">Sample Info #${sample.id}</h4>
                     <div>Uploaded at: ${sample.createdAt}</div>
-                    <div>Uploaded by: ${sample.uploadedBy}</div>
+                    <div>User ID: ${sample.userId}</div>
 
                 </div>
             </div>

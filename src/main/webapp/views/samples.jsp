@@ -63,7 +63,7 @@
                     <thead>
                     <tr>
                         <th>#</th>
-                        <th>Uploaded By</th>
+                        <th>User ID</th>
                         <th>Uploaded At</th>
                         <th>Action</th>
                     </tr>
@@ -72,7 +72,7 @@
                     <c:forEach items="${samples}" var="item" varStatus="loop">
                         <tr>
                             <td>${item.id}</td>
-                            <td>${item.uploadedBy}</td>
+                            <td>${item.userId}</td>
                             <td>${item.createdAt}</td>
                             <td><a href="matching?sampleId=${item.id}">matching</a></td>
                         </tr>
