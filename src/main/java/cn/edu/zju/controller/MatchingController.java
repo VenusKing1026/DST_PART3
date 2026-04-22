@@ -41,7 +41,7 @@ public class MatchingController extends BaseController {   //改动1
     }
 
     public void samples(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
-        int userId = getCurrentUserIdForDev();
+        int userId = getCurrentUserId(request);
         List<Sample> samples = sampleDao.findByUser(userId);  //改动2
         request.setAttribute("samples", samples);
         request.getRequestDispatcher("/views/samples.jsp").forward(request, response);
@@ -68,7 +68,7 @@ public class MatchingController extends BaseController {   //改动1
         List<DrugLabel> drugLabels = drugLabelDao.findAll();
         List<DrugLabel> matched = doMatch(refGenes, drugLabels);
         request.setAttribute("matched", matched);
-        int userId = getCurrentUserIdForDev();
+        int userId = getCurrentUserId(request);
         Sample sample = sampleDao.findById(sampleId, userId);
         if (sample == null) {
             response.sendRedirect("samples");
@@ -96,7 +96,7 @@ public class MatchingController extends BaseController {   //改动1
 
     //改动4
     public void uploadAnnovarOutput(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
-        int userId = getCurrentUserIdForDev();
+        int userId = getCurrentUserId(request);
         Part requestPart = request.getPart("annovar");
         if (requestPart == null) {
             request.setAttribute("validateError", "annovar output file can not be blank");
