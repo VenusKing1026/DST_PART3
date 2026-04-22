@@ -19,9 +19,21 @@ public class AnnovarDao extends BaseDao {
             throw new RuntimeException("ANNOVAR output is empty or missing data rows");
         }
 
+        String[] headers = lines[0].split("\\t", -1);
+        Map<String, Integer> headerIndex = new HashMap<>();
+        for (int i = 0; i < headers.length; i++) {
+            headerIndex.put(headers[i], i);
+        }
+
+        List<String> requiredFields = Arrays.asList("Chr", "Start", "End", "Ref", "Alt");
+        for (String field : requiredFields) {
+            if (!headerIndex.containsKey(field)) {
+                throw new RuntimeException("Invalid ANNOVAR output: missing required column " + field);
+            }
+        }
+
         DBUtils.execSQL(connection -> {
 
-            // 只插入当前 AnnovarService 实际会产生的字段
             String sql = "INSERT INTO annovar (" +
                     "sample_id, " +
                     "Chr, Start, End, Ref, Alt, " +
@@ -38,14 +50,6 @@ public class AnnovarDao extends BaseDao {
                 connection.setAutoCommit(false);
                 PreparedStatement preparedStatement = connection.prepareStatement(sql);
 
-                // 读取表头
-                String[] headers = lines[0].split("\\t", -1);
-                Map<String, Integer> headerIndex = new HashMap<>();
-                for (int i = 0; i < headers.length; i++) {
-                    headerIndex.put(headers[i], i);
-                }
-
-                // 当前版本 runAnnovar() 实际会返回的固定字段
                 List<String> dbFields = Arrays.asList(
                         "Chr", "Start", "End", "Ref", "Alt",
                         "Func.refGene", "Gene.refGene", "GeneDetail.refGene", "ExonicFunc.refGene", "AAChange.refGene",
@@ -55,34 +59,31 @@ public class AnnovarDao extends BaseDao {
                 );
 
                 Set<String> knownFields = new HashSet<>(dbFields);
+                int validRowCount = 0;
 
                 for (int i = 1; i < lines.length; i++) {
-                    if (lines[i] == null || lines[i].isBlank()) {
+                    String line = lines[i];
+                    if (line == null || line.isBlank()) {
                         continue;
                     }
 
-                    // 跳过 VCF 头信息混入的行
-                    if (lines[i].startsWith("##") || lines[i].startsWith("#CHROM")) {
-                        continue;
+                    if (line.startsWith("##") || line.startsWith("#CHROM")) {
+                        throw new RuntimeException("Invalid ANNOVAR output: raw VCF header line found at line " + (i + 1));
                     }
 
-                    String[] split = lines[i].split("\\t", -1);
+                    String[] split = line.split("\\t", -1);
 
-                    // 如果连最基本的变异列都没有，跳过
-                    if (split.length < 5) {
-                        continue;
+                    if (!isValidAnnovarRow(split, headerIndex)) {
+                        throw new RuntimeException("Invalid ANNOVAR data row at line " + (i + 1) + ": " + line);
                     }
 
-                    // 第1列：sample_id
                     preparedStatement.setInt(1, sampleId);
 
-                    // 第2列开始：固定字段
                     for (int j = 0; j < dbFields.size(); j++) {
                         String fieldName = dbFields.get(j);
                         preparedStatement.setString(j + 2, normalizeValue(getValue(split, headerIndex, fieldName)));
                     }
 
-                    // 其余所有非固定字段，统一拼到 Otherinfo
                     StringJoiner otherInfo = new StringJoiner("\t");
                     for (int h = 0; h < headers.length; h++) {
                         String header = headers[h];
@@ -92,15 +93,18 @@ public class AnnovarDao extends BaseDao {
                         }
                     }
 
-                    // 最后一列：Otherinfo
                     preparedStatement.setString(dbFields.size() + 2, otherInfo.toString());
-
                     preparedStatement.addBatch();
+                    validRowCount++;
 
-                    if (i % 500 == 0) {
+                    if (validRowCount % 500 == 0) {
                         preparedStatement.executeBatch();
                         connection.commit();
                     }
+                }
+
+                if (validRowCount == 0) {
+                    throw new RuntimeException("No valid ANNOVAR rows found");
                 }
 
                 preparedStatement.executeBatch();
@@ -110,6 +114,20 @@ public class AnnovarDao extends BaseDao {
                 throw new RuntimeException(e);
             }
         });
+    }
+
+    private boolean isValidAnnovarRow(String[] split, Map<String, Integer> headerIndex) {
+        String chr = normalizeValue(getValue(split, headerIndex, "Chr"));
+        String start = normalizeValue(getValue(split, headerIndex, "Start"));
+        String end = normalizeValue(getValue(split, headerIndex, "End"));
+        String ref = normalizeValue(getValue(split, headerIndex, "Ref"));
+        String alt = normalizeValue(getValue(split, headerIndex, "Alt"));
+
+        return !chr.isBlank()
+                && start.matches("\\d+")
+                && end.matches("\\d+")
+                && !ref.isBlank()
+                && !alt.isBlank();
     }
 
     private String getValue(String[] split, Map<String, Integer> headerIndex, String columnName) {

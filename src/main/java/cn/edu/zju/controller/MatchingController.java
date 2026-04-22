@@ -1,5 +1,5 @@
 package cn.edu.zju.controller;
-
+import cn.edu.zju.service.AnnovarValidator;
 import cn.edu.zju.bean.DrugLabel;
 import cn.edu.zju.bean.Sample;
 import cn.edu.zju.dao.AnnovarDao;
@@ -110,16 +110,17 @@ public class MatchingController {
 
         String content = new String(requestPart.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
 
-        int sampleId = sampleDao.save(uploadedBy);
         try {
-            annovarDao.save(sampleId, content);
-        } catch (ArrayIndexOutOfBoundsException e) {
-            request.setAttribute("validateError", "ANNOVAR output file is invalid");
-            request.getRequestDispatcher("/views/matching_index_error.jsp").forward(request, response);
-            return;
-        }
+            AnnovarValidator.validateMultianno(content);
 
-        response.sendRedirect("matching?sampleId=" + sampleId);
+            int sampleId = sampleDao.save(uploadedBy);
+            annovarDao.save(sampleId, content);
+
+            response.sendRedirect("matching?sampleId=" + sampleId);
+        } catch (Exception e) {
+            request.setAttribute("validateError", "ANNOVAR output file is invalid: " + e.getMessage());
+            request.getRequestDispatcher("/views/matching_index_error.jsp").forward(request, response);
+        }
     }
 
     public void uploadVcf(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
@@ -160,6 +161,8 @@ public class MatchingController {
 
             File annovarResult = AnnovarService.runAnnovar(vcfFile, true);
             String content = Files.readString(annovarResult.toPath(), StandardCharsets.UTF_8);
+
+            AnnovarValidator.validateMultianno(content);
 
             int sampleId = sampleDao.save(uploadedBy);
             annovarDao.save(sampleId, content);

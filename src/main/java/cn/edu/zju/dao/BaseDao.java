@@ -33,9 +33,4 @@ public abstract class BaseDao {
         return exists.get();
     }
 
-    public List<Sample> findAll() {
-        return List.of();
-    }
-
-
 }
