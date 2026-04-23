@@ -14,12 +14,11 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.Part;
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
+import java.io.InputStreamReader;
+import java.util.*;
 
 public class MatchingController {
 
@@ -87,7 +86,96 @@ public class MatchingController {
         }
         return matchedLabels;
     }
+    private void handleAnnovarFile(Part filePart, int sampleId) throws IOException {
+        InputStream inputStream = filePart.getInputStream();
+        byte[] bytes = inputStream.readAllBytes();
+        String content = new String(bytes);
+        annovarDao.save(sampleId, content);
+    }
+    private List<String> handleVcfFile(Part filePart, int sampleId) throws IOException {
+        Set<String> genes = new LinkedHashSet<>();
 
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(filePart.getInputStream()))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                if (line.startsWith("#")) {
+                    continue;
+                }
+
+                String[] parts = line.split("\t");
+                if (parts.length < 8) {
+                    continue;
+                }
+
+                String chr = parts[0];
+                String pos = parts[1];
+                String ref = parts[3];
+                String alt = parts[4];
+                String info = parts[7];
+
+                log.info("VCF record: sampleId={}, chr={}, pos={}, ref={}, alt={}", sampleId, chr, pos, ref, alt);
+
+                genes.addAll(extractGenesFromInfo(info));
+            }
+        }
+
+        if (genes.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "This VCF does not contain gene annotations. Please upload an annotated VCF or ANNOVAR output."
+            );
+        }
+
+        return new ArrayList<>(genes);
+    }
+
+    private List<String> extractGenesFromInfo(String info) {
+        Set<String> genes = new LinkedHashSet<>();
+
+        if (info == null || info.isEmpty()) {
+            return new ArrayList<>(genes);
+        }
+
+        String[] fields = info.split(";");
+
+        for (String field : fields) {
+            if (field.startsWith("ANN=")) {
+                String annValue = field.substring(4);
+                String[] annItems = annValue.split(",");
+
+                for (String ann : annItems) {
+                    String[] tokens = ann.split("\\|");
+                    if (tokens.length > 3) {
+                        String gene = tokens[3].trim();
+                        if (!gene.isEmpty() && !".".equals(gene)) {
+                            genes.add(gene);
+                        }
+                    }
+                }
+            } else if (field.startsWith("GENEINFO=")) {
+                String geneInfo = field.substring("GENEINFO=".length());
+                String[] geneItems = geneInfo.split("\\|");
+
+                for (String geneItem : geneItems) {
+                    String gene = geneItem.split(":")[0].trim();
+                    if (!gene.isEmpty() && !".".equals(gene)) {
+                        genes.add(gene);
+                    }
+                }
+            } else if (field.startsWith("GENE=")) {
+                String geneValue = field.substring("GENE=".length());
+                String[] geneItems = geneValue.split(",");
+
+                for (String gene : geneItems) {
+                    gene = gene.trim();
+                    if (!gene.isEmpty() && !".".equals(gene)) {
+                        genes.add(gene);
+                    }
+                }
+            }
+        }
+
+        return new ArrayList<>(genes);
+    }
 
     public void uploadVariantFile(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
         String inputType = request.getParameter("input_type");
@@ -127,24 +215,33 @@ public class MatchingController {
         log.info("uploadedBy = {}", uploadedBy);
         log.info("fileName = {}", fileName);
 
-        if ("annovar".equalsIgnoreCase(inputType)) {
-            log.info("ANNOVAR upload selected");
-            // TODO: handle annovar file
-        } else if ("vcf".equalsIgnoreCase(inputType)) {
-            log.info("VCF upload selected");
-            // TODO: handle vcf file
-        } else {
-            request.setAttribute("error", "Unsupported input type: " + inputType);
+        try {
+            if ("annovar".equalsIgnoreCase(inputType)) {
+                handleAnnovarFile(filePart, sampleId);
+                log.info("ANNOVAR upload selected");
+                response.sendRedirect("matching?sampleId=" + sampleId);
+                return;
+            } else if ("vcf".equalsIgnoreCase(inputType)) {
+                List<String> refGenes = handleVcfFile(filePart, sampleId);
+                List<DrugLabel> allDrugLabels = drugLabelDao.findAll();
+                List<DrugLabel> matchedLabels = doMatch(refGenes, allDrugLabels);
+
+                request.setAttribute("sampleId", sampleId);
+                request.setAttribute("refGenes", refGenes);
+                request.setAttribute("matchedLabels", matchedLabels);
+                request.getRequestDispatcher("/views/matching_index_search.jsp").forward(request, response);
+                return;
+            } else {
+                request.setAttribute("error", "Unsupported input type: " + inputType);
+                request.getRequestDispatcher("/views/matching_index_error.jsp").forward(request, response);
+                return;
+            }
+        } catch (Exception e) {
+            log.error("File processing failed", e);
+            request.setAttribute("error", e.getMessage());
             request.getRequestDispatcher("/views/matching_index_error.jsp").forward(request, response);
             return;
         }
-
-        request.setAttribute("message", "Upload received successfully.");
-        request.setAttribute("inputType", inputType);
-        request.setAttribute("uploadedBy", uploadedBy);
-        request.setAttribute("fileName", fileName);
-
-        request.getRequestDispatcher("/views/matching_index.jsp").forward(request, response);
     }
 
 }
