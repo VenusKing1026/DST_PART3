@@ -13,10 +13,13 @@ public class Sample {
     public Sample() {
     }
 
-    public Sample(int id, Date createdAt, String uploadedBy) {
+    public Sample(int id, Date createdAt, String uploadedBy, String inputType, String fileName, String parseStatus) {
         this.id = id;
         this.createdAt = createdAt;
         this.uploadedBy = uploadedBy;
+        this.inputType = inputType;
+        this.fileName = fileName;
+        this.parseStatus = parseStatus;
     }
 
     public int getId() {
