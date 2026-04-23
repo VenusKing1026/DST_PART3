@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 
 public class MatchingController {
@@ -87,32 +88,6 @@ public class MatchingController {
         return matchedLabels;
     }
 
-    public void uploadAnnovarOutput(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
-        String uploadedBy = request.getParameter("uploaded_by");
-        if (uploadedBy == null || uploadedBy.isBlank()) {
-            request.setAttribute("validateError", "Uploaded by can not be blank");
-            request.getRequestDispatcher("/views/matching_index_error.jsp").forward(request, response);
-            return;
-        }
-        Part requestPart = request.getPart("annovar");
-        if (requestPart == null) {
-            request.setAttribute("validateError", "annovar output file can not be blank");
-            request.getRequestDispatcher("/views/matching_index_error.jsp").forward(request, response);
-            return;
-        }
-        InputStream inputStream = requestPart.getInputStream();
-        byte[] bytes = inputStream.readAllBytes();
-        String content = new String(bytes);
-        int sampleId = sampleDao.save(uploadedBy);
-        try {
-            annovarDao.save(sampleId, content);
-        } catch (ArrayIndexOutOfBoundsException e) {
-            request.setAttribute("validateError", "annovar output file is invalid");
-            request.getRequestDispatcher("/views/matching_index_error.jsp").forward(request, response);
-            return;
-        }
-        response.sendRedirect("matching?sampleId=" + sampleId);
-    }
 
     public void uploadVariantFile(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
         String inputType = request.getParameter("input_type");
@@ -138,15 +113,26 @@ public class MatchingController {
         }
 
         String fileName = filePart.getSubmittedFileName();
+        Sample sample = new Sample();
+        sample.setCreatedAt(new Date());
+        sample.setUploadedBy(uploadedBy);
+        sample.setInputType(inputType);
+        sample.setFileName(fileName);
+        sample.setParseStatus("pending");
 
+        int sampleId = sampleDao.save(sample);
+
+        log.info("sampleId = {}", sampleId);
         log.info("inputType = {}", inputType);
         log.info("uploadedBy = {}", uploadedBy);
         log.info("fileName = {}", fileName);
 
         if ("annovar".equalsIgnoreCase(inputType)) {
             log.info("ANNOVAR upload selected");
+            // TODO: handle annovar file
         } else if ("vcf".equalsIgnoreCase(inputType)) {
             log.info("VCF upload selected");
+            // TODO: handle vcf file
         } else {
             request.setAttribute("error", "Unsupported input type: " + inputType);
             request.getRequestDispatcher("/views/matching_index_error.jsp").forward(request, response);
