@@ -29,7 +29,7 @@ public class MatchingController {
     private DrugLabelDao drugLabelDao = new DrugLabelDao();
 
     public void register(DispatchServlet.Dispatcher dispatcher) {
-        dispatcher.registerPostMapping("/upload", this::uploadAnnovarOutput);
+        dispatcher.registerPostMapping("/upload", this::uploadVariantFile);
         dispatcher.registerGetMapping("/matchingIndex", this::matchingIndex);
         dispatcher.registerGetMapping("/matching", this::matching);
         dispatcher.registerGetMapping("/samples", this::samples);
@@ -113,4 +113,52 @@ public class MatchingController {
         }
         response.sendRedirect("matching?sampleId=" + sampleId);
     }
+
+    public void uploadVariantFile(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
+        String inputType = request.getParameter("input_type");
+        String uploadedBy = request.getParameter("uploaded_by");
+        Part filePart = request.getPart("variant_file");
+
+        if (inputType == null || inputType.trim().isEmpty()) {
+            request.setAttribute("error", "Input type is required.");
+            request.getRequestDispatcher("/views/matching_index_error.jsp").forward(request, response);
+            return;
+        }
+
+        if (uploadedBy == null || uploadedBy.trim().isEmpty()) {
+            request.setAttribute("error", "Uploaded by is required.");
+            request.getRequestDispatcher("/views/matching_index_error.jsp").forward(request, response);
+            return;
+        }
+
+        if (filePart == null || filePart.getSize() == 0) {
+            request.setAttribute("error", "Please select a file.");
+            request.getRequestDispatcher("/views/matching_index_error.jsp").forward(request, response);
+            return;
+        }
+
+        String fileName = filePart.getSubmittedFileName();
+
+        log.info("inputType = {}", inputType);
+        log.info("uploadedBy = {}", uploadedBy);
+        log.info("fileName = {}", fileName);
+
+        if ("annovar".equalsIgnoreCase(inputType)) {
+            log.info("ANNOVAR upload selected");
+        } else if ("vcf".equalsIgnoreCase(inputType)) {
+            log.info("VCF upload selected");
+        } else {
+            request.setAttribute("error", "Unsupported input type: " + inputType);
+            request.getRequestDispatcher("/views/matching_index_error.jsp").forward(request, response);
+            return;
+        }
+
+        request.setAttribute("message", "Upload received successfully.");
+        request.setAttribute("inputType", inputType);
+        request.setAttribute("uploadedBy", uploadedBy);
+        request.setAttribute("fileName", fileName);
+
+        request.getRequestDispatcher("/views/matching_index.jsp").forward(request, response);
+    }
+
 }
