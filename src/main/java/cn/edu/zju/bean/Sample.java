@@ -6,6 +6,9 @@ public class Sample {
     private int id;
     private Date createdAt;
     private String uploadedBy;
+    private String inputType;
+    private String fileName;
+    private String parseStatus;
 
     public Sample() {
     }
@@ -38,5 +41,28 @@ public class Sample {
 
     public void setUploadedBy(String uploadedBy) {
         this.uploadedBy = uploadedBy;
+    }
+    public String getInputType() {
+        return inputType;
+    }
+
+    public void setInputType(String inputType) {
+        this.inputType = inputType;
+    }
+
+    public String getFileName() {
+        return fileName;
+    }
+
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
+    }
+
+    public String getParseStatus() {
+        return parseStatus;
+    }
+
+    public void setParseStatus(String parseStatus) {
+        this.parseStatus = parseStatus;
     }
 }
