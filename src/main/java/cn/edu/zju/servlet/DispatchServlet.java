@@ -63,6 +63,7 @@ public class DispatchServlet extends HttpServlet {
     @Override
     protected void service(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         String pathInfo = req.getPathInfo();
+        System.out.println(">>> DispatchServlet.service() called, pathInfo = " + pathInfo);  // 加了这行
         log.info("{}: {}", req.getMethod(), pathInfo);
         super.service(req, resp);
     }
@@ -84,6 +85,10 @@ public class DispatchServlet extends HttpServlet {
     private String getPathInfo(HttpServletRequest req) {
         String pathInfo = req.getPathInfo();
         if (pathInfo == null) {
+            // 用 getServletPath() 替代
+            pathInfo = req.getServletPath();
+        }
+        if (pathInfo == null || pathInfo.isEmpty()) {
             pathInfo = "/";
         }
         return pathInfo;
