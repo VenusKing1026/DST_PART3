@@ -5,12 +5,14 @@ import cn.edu.zju.bean.DrugLabel;
 import cn.edu.zju.bean.Genotype;
 import cn.edu.zju.bean.MatchingResult;
 import cn.edu.zju.bean.Phenotype;
-import cn.edu.zju.bean.ScoredAllele;
 import cn.edu.zju.bean.Sample;
+import cn.edu.zju.bean.ScoredAllele;
+import cn.edu.zju.bean.VariantWithGT;
 import cn.edu.zju.dao.AnnovarDao;
 import cn.edu.zju.dao.DosingGuidelineDao;
 import cn.edu.zju.dao.DrugLabelDao;
 import cn.edu.zju.dao.GenotypeDao;
+import cn.edu.zju.dao.GenotypeDao.DiplotypeResult;
 import cn.edu.zju.dao.PhenotypeDao;
 import cn.edu.zju.dao.SampleDao;
 import cn.edu.zju.servlet.DispatchServlet;
@@ -92,34 +94,29 @@ public class MatchingController {
     }
 
     /**
-     * PGx 匹配流水线：
-     * annovar rsID -> star allele -> diplotype -> phenotype -> dosing guideline
+     * PGx 匹配流水线（V4.1 染色体感知版本）：
+     * annovar rsID + GT -> 拆分染色体 -> star allele -> diplotype -> phenotype -> dosing guideline
      */
     private List<MatchingResult> runPgxPipeline(int sampleId) {
-        // Step 1: 获取功能性 rsID（按基因分组）
-        Map<String, List<String>> geneRsIds = annovarDao.getRsIdsPerGene(sampleId);
-        log.info("[PGx] sampleId={} | Step1: found {} genes with functional rsIDs: {}",
-                sampleId, geneRsIds.size(), geneRsIds.keySet());
+        // Step 1: 获取功能性变异（按基因分组，含 GT 信息）
+        Map<String, List<VariantWithGT>> geneVariants = annovarDao.getVariantsWithGT(sampleId);
+        log.info("[PGx V4.1] sampleId={} | Step1: found {} genes with GT info: {}",
+                sampleId, geneVariants.size(), geneVariants.keySet());
 
         List<MatchingResult> results = new ArrayList<>();
 
-        for (Map.Entry<String, List<String>> entry : geneRsIds.entrySet()) {
+        for (Map.Entry<String, List<VariantWithGT>> entry : geneVariants.entrySet()) {
             String gene = entry.getKey();
-            List<String> rsids = entry.getValue();
-            log.info("[PGx] gene={} | rsIDs: {}", gene, rsids);
+            List<VariantWithGT> variantsWithGT = entry.getValue();
+            log.info("[PGx V4.1] gene={} | variants count={}, rsIDs: {}",
+                    gene, variantsWithGT.size(),
+                    variantsWithGT.stream().map(VariantWithGT::getRsid).collect(Collectors.toList()));
 
-            // Step 2: rsID -> star allele（V2: 打分策略）
-            List<ScoredAllele> scored = genotypeDao.findScoredAlleles(gene, rsids);
-            if (scored.isEmpty()) {
-                log.info("[PGx] gene={} | Step2: no star allele scored, skipping", gene);
-                continue;
-            }
-            log.info("[PGx] gene={} | Step2: scored alleles (top5): {}",
-                    gene, scored.subList(0, Math.min(5, scored.size())));
-
-            // Step 3: 构建 diplotype（打分最高的两个 allele）
-            String diplotype = buildDiplotypeFromScored(scored);
-            log.info("[PGx] gene={} | Step3: diplotype={}", gene, diplotype);
+            // Step 2 & 3: 根据 GT 拆分染色体，分别打分，推断 diplotype
+            DiplotypeResult diplotypeResult = genotypeDao.inferDiplotypeWithGT(gene, variantsWithGT);
+            String diplotype = diplotypeResult.getDiplotype();
+            log.info("[PGx V4.1] gene={} | Step2-3: diplotype={} (allele1={}, allele2={})",
+                    gene, diplotype, diplotypeResult.getAllele1(), diplotypeResult.getAllele2());
 
             // Step 4: diplotype -> phenotype
             String phenotype = "Indeterminate";
@@ -127,7 +124,7 @@ public class MatchingController {
             if (pt != null) {
                 phenotype = pt.getPhenotype();
             }
-            log.info("[PGx] gene={} | Step4: phenotype={}", gene, phenotype);
+            log.info("[PGx V4.1] gene={} | Step4: phenotype={}", gene, phenotype);
 
             // Step 5: 按基因名查 dosing guideline，按 metabolizer 分类
             List<DosingGuideline> all = dosingGuidelineDao.findByGeneContains(gene);
@@ -139,52 +136,14 @@ public class MatchingController {
                     .filter(g -> g.getSummaryMarkdown() == null ||
                                  !g.getSummaryMarkdown().toLowerCase().contains("metabolizer"))
                     .collect(Collectors.toList());
-            log.info("[PGx] gene={} | Step5: metabolizerMatches={}, generalMatches={}",
+            log.info("[PGx V4.1] gene={} | Step5: metabolizerMatches={}, generalMatches={}",
                     gene, metabolizerMatches.size(), generalMatches.size());
 
             results.add(new MatchingResult(gene, diplotype, phenotype, metabolizerMatches, generalMatches));
         }
 
-        log.info("[PGx] sampleId={} | pipeline complete, {} gene results", sampleId, results.size());
+        log.info("[PGx V4.1] sampleId={} | pipeline complete, {} gene results", sampleId, results.size());
         return results;
-    }
-
-    /**
-     * V2 打分策略构建 diplotype：
-     * - 所有 score = 0  → *1/*1
-     * - 只有 1 个 score > 0 → *1/top1
-     * - 2+ 个 score > 0  → top1/top2
-     */
-    private String buildDiplotypeFromScored(List<ScoredAllele> scored) {
-        List<ScoredAllele> hits = scored.stream()
-                .filter(s -> s.getMatchedCount() > 0)
-                .collect(Collectors.toList());
-        if (hits.isEmpty()) {
-            return "*1/*1";
-        }
-        if (hits.size() == 1) {
-            return canonicalize("*1", hits.get(0).getStarAllele());
-        }
-        return canonicalize(hits.get(0).getStarAllele(), hits.get(1).getStarAllele());
-    }
-
-    /**
-     * 将两个 star allele 规范化为 小号/大号 格式（如 *1/*2 而非 *2/*1）。
-     * 提取数字部分比较，解析失败则按字母序排列。
-     */
-    private String canonicalize(String a1, String a2) {
-        int n1 = parseStarNumber(a1);
-        int n2 = parseStarNumber(a2);
-        if (n1 <= n2) return a1 + "/" + a2;
-        return a2 + "/" + a1;
-    }
-
-    private int parseStarNumber(String allele) {
-        try {
-            return Integer.parseInt(allele.replaceAll("[^0-9]", ""));
-        } catch (NumberFormatException e) {
-            return Integer.MAX_VALUE;
-        }
     }
 
     /** 原有文本匹配逻辑，保留为 legacy 回退路径（?mode=legacy） */
