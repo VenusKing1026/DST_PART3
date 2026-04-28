@@ -1,5 +1,6 @@
 package cn.edu.zju.dao;
 
+import cn.edu.zju.bean.VariantWithGT;
 import cn.edu.zju.dbutils.DBUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +13,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class AnnovarDao extends BaseDao {
 
@@ -54,6 +57,204 @@ public class AnnovarDao extends BaseDao {
                 e.printStackTrace();
             }
         });
+    }
+
+    /**
+     * 返回样本中功能性变异，包含GT信息
+     * 解析Otherinfo列中的VCF FORMAT字段，提取基因型
+     */
+    public Map<String, List<VariantWithGT>> getVariantsWithGT(int sampleId) {
+        String sql = "SELECT `Gene.refGene`, avsnp150, `Chr`, Start, End, Ref, Alt, Otherinfo FROM annovar " +
+                "WHERE sample_id = ? " +
+                "AND `Func.refGene` = 'exonic' " +
+                "AND `ExonicFunc.refGene` != 'synonymous SNV' " +
+                "AND avsnp150 IS NOT NULL AND avsnp150 != '.'";
+
+        Map<String, List<VariantWithGT>> geneVariants = new HashMap<>();
+        DBUtils.execSQL(connection -> {
+            try {
+                PreparedStatement ps = connection.prepareStatement(sql);
+                ps.setInt(1, sampleId);
+                ResultSet rs = ps.executeQuery();
+
+                while (rs.next()) {
+                    String gene = rs.getString(1);
+                    String rsid = rs.getString(2);
+
+                    if (gene == null || gene.isBlank()) continue;
+                    // TODO: 含分号的多基因注释（如 GENE1;GENE2）暂跳过，Phase 2 处理
+                    if (gene.contains(";")) continue;
+
+                    // 获取其他字段
+                    String chr = rs.getString(3);
+                    int start = rs.getInt(4);
+                    int end = rs.getInt(5);
+                    String ref = rs.getString(6);
+                    String alt = rs.getString(7);
+                    String otherInfo = rs.getString(8);
+
+                    // 从otherInfo中提取GT信息
+                    String gt = extractGTFromOtherInfo(otherInfo);
+
+                    VariantWithGT variant = new VariantWithGT(gene, rsid, gt);
+                    variant.setChr(chr);
+                    variant.setStart(start);
+                    variant.setEnd(end);
+                    variant.setRef(ref);
+                    variant.setAlt(alt);
+
+                    geneVariants.computeIfAbsent(gene, k -> new ArrayList<>()).add(variant);
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        });
+        return geneVariants;
+    }
+
+    /**
+     * 返回样本中功能性变异的 rsID，按基因分组，支持GT信息解析。
+     * 过滤条件：exonic 区域、非同义突变、avsnp150 不为 '.' 或空。
+     * 增强：可选择是否包含GT信息
+     */
+    public Map<String, List<Object>> getRsIdsPerGeneWithGT(int sampleId, boolean includeGT) {
+        if (!includeGT) {
+            // 保持原有行为，返回rsID列表
+            String sql = "SELECT `Gene.refGene`, avsnp150 FROM annovar " +
+                    "WHERE sample_id = ? " +
+                    "AND `Func.refGene` = 'exonic' " +
+                    "AND `ExonicFunc.refGene` != 'synonymous SNV' " +
+                    "AND avsnp150 IS NOT NULL AND avsnp150 != '.'";
+
+            Map<String, List<String>> geneRsIds = new HashMap<>();
+            DBUtils.execSQL(connection -> {
+                try {
+                    PreparedStatement ps = connection.prepareStatement(sql);
+                    ps.setInt(1, sampleId);
+                    ResultSet rs = ps.executeQuery();
+                    while (rs.next()) {
+                        String gene = rs.getString(1);
+                        String rsid = rs.getString(2);
+                        if (gene == null || gene.isBlank()) continue;
+                        // TODO: 含分号的多基因注释（如 GENE1;GENE2）暂跳过，Phase 2 处理
+                        if (gene.contains(";")) continue;
+                        geneRsIds.computeIfAbsent(gene, k -> new ArrayList<>()).add(rsid);
+                    }
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            });
+
+            // 将Map<String, List<String>>转换为Map<String, List<Object>>
+            Map<String, List<Object>> result = new HashMap<>();
+            for (Map.Entry<String, List<String>> entry : geneRsIds.entrySet()) {
+                List<Object> objectList = new ArrayList<>();
+                objectList.addAll(entry.getValue());
+                result.put(entry.getKey(), objectList);
+            }
+            return result;
+        } else {
+            // 包含GT信息的新行为
+            String sql = "SELECT `Gene.refGene`, avsnp150, Otherinfo FROM annovar " +
+                    "WHERE sample_id = ? " +
+                    "AND `Func.refGene` = 'exonic' " +
+                    "AND `ExonicFunc.refGene` != 'synonymous SNV' " +
+                    "AND avsnp150 IS NOT NULL AND avsnp150 != '.'";
+
+            Map<String, List<Object>> geneVariants = new HashMap<>();
+            DBUtils.execSQL(connection -> {
+                try {
+                    PreparedStatement ps = connection.prepareStatement(sql);
+                    ps.setInt(1, sampleId);
+                    ResultSet rs = ps.executeQuery();
+
+                    while (rs.next()) {
+                        String gene = rs.getString(1);
+                        String rsid = rs.getString(2);
+
+                        if (gene == null || gene.isBlank()) continue;
+                        if (gene.contains(";")) continue;
+
+                        String otherInfo = rs.getString(3);
+                        String gt = extractGTFromOtherInfo(otherInfo);
+
+                        // 创建包含rsid和GT的对象数组
+                        Object[] variantData = {rsid, gt};
+
+                        geneVariants.computeIfAbsent(gene, k -> new ArrayList<>()).add(variantData);
+                    }
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            });
+            return geneVariants;
+        }
+    }
+
+    /**
+     * 从Otherinfo字符串中提取GT信息
+     * @param otherInfo 包含VCF格式信息的字符串
+     * @return 提取的GT信息，如果未找到则返回null
+     */
+    private String extractGTFromOtherInfo(String otherInfo) {
+        if (otherInfo == null || otherInfo.isEmpty()) {
+            return null;
+        }
+
+        // 查找GT字段模式：可能是 "GT:..." 或者类似 "GT:AD:DP:GD:GL:GQ:OG    0|1:2,1:2:.:-3.95,-0.60,-3.69:32.52:./." 的格式
+        // 首先查找FORMAT信息和对应的值
+
+        // 如果otherInfo中包含GT相关的格式，如 "GT:AD:DP..." 后跟 "0|1:2,1:..."
+        String[] parts = otherInfo.split("\\s+");
+        for (int i = 0; i < parts.length - 1; i++) {
+            String formatStr = parts[i];
+            String valueStr = parts[i + 1];
+
+            if (formatStr.startsWith("GT:") || formatStr.equals("GT")) {
+                // 提取GT值，通常是冒号分隔的值中的第一个
+                String[] values = valueStr.split(":");
+                if (values.length > 0) {
+                    String gtValue = values[0];
+                    // 验证是否是有效的GT格式（如 0|1, 1|0, 0/0, 1|1 等）
+                    if (isValidGTFormat(gtValue)) {
+                        return gtValue;
+                    }
+                }
+            }
+        }
+
+        // 查找直接的GT模式，如 "GT" 后面跟着基因型
+        Pattern gtPattern = Pattern.compile("GT\\s+([0-9\\|\\/]+)");
+        Matcher matcher = gtPattern.matcher(otherInfo);
+        if (matcher.find()) {
+            String gtValue = matcher.group(1);
+            if (isValidGTFormat(gtValue)) {
+                return gtValue;
+            }
+        }
+
+        // 查找直接的基因型模式
+        Pattern directGT = Pattern.compile("(?:^|\\s)([0-9][\\|\\/][0-9])(?:\\s|$)");
+        Matcher directMatcher = directGT.matcher(otherInfo);
+        if (directMatcher.find()) {
+            String gtValue = directMatcher.group(1);
+            if (isValidGTFormat(gtValue)) {
+                return gtValue;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * 验证是否是有效的GT格式
+     * @param gt GT字符串
+     * @return 是否有效
+     */
+    private boolean isValidGTFormat(String gt) {
+        if (gt == null) return false;
+        // 检查GT格式，如 0|0, 0|1, 1|0, 1|1, 0/0, 0/1 等
+        return gt.matches("[0-9][\\|\\/][0-9]");
     }
 
     /**
