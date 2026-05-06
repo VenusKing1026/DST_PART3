@@ -215,6 +215,9 @@ create table sample
     id int auto_increment
         primary key,
     created_at datetime null,
-    uploaded_by text null
+    uploaded_by text null,
+    input_type varchar(50) null,
+    file_name text null,
+    parse_status varchar(50) null
 );
 

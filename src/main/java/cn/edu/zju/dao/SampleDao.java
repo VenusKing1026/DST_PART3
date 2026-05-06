@@ -83,4 +83,17 @@ public class SampleDao extends BaseDao {
         });
         return sample.get();
     }
+
+    public void updateParseStatus(int id, String parseStatus) {
+        DBUtils.execSQL(connection -> {
+            try {
+                PreparedStatement preparedStatement = connection.prepareStatement("update sample set parse_status = ? where id = ?");
+                preparedStatement.setString(1, parseStatus);
+                preparedStatement.setInt(2, id);
+                preparedStatement.executeUpdate();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        });
+    }
 }

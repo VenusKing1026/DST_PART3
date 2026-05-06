@@ -17,6 +17,9 @@
     <meta name="description" content="">
     <meta name="author" content="">
     <meta name="generator" content="">
+    <c:if test="${hasActiveStatus}">
+        <meta http-equiv="refresh" content="5">
+    </c:if>
     <title>Dashboard Template · Bootstrap</title>
 
     <!-- Bootstrap core CSS -->
@@ -65,6 +68,8 @@
                         <th>#</th>
                         <th>Uploaded By</th>
                         <th>Uploaded At</th>
+                        <th>Input Type</th>
+                        <th>File Name</th>
                         <th>Action</th>
                     </tr>
                     </thead>
@@ -74,7 +79,33 @@
                             <td>${item.id}</td>
                             <td>${item.uploadedBy}</td>
                             <td>${item.createdAt}</td>
-                            <td><a href="matching?sampleId=${item.id}">matching</a></td>
+                            <td>${item.inputType}</td>
+                            <td>${item.fileName}</td>
+                            <td>
+                                <c:choose>
+                                    <c:when test="${item.parseStatus == 'finished'}">
+                                        <a href="matching?sampleId=${item.id}">matching</a>
+                                    </c:when>
+                                    <c:when test="${item.parseStatus == 'pending'}">
+                                        <a href="matching?sampleId=${item.id}">matching</a>
+                                    </c:when>
+                                    <c:when test="${empty item.parseStatus}">
+                                        <a href="matching?sampleId=${item.id}">matching</a>
+                                    </c:when>
+                                    <c:when test="${item.parseStatus == 'uploading'}">
+                                        <span class="text-muted">uploading file</span>
+                                    </c:when>
+                                    <c:when test="${item.parseStatus == 'processing'}">
+                                        <span class="text-muted">processing</span>
+                                    </c:when>
+                                    <c:when test="${item.parseStatus == 'failed'}">
+                                        <span class="text-danger">failed</span>
+                                    </c:when>
+                                    <c:otherwise>
+                                        <span class="text-muted">${item.parseStatus}</span>
+                                    </c:otherwise>
+                                </c:choose>
+                            </td>
                         </tr>
                     </c:forEach>
 

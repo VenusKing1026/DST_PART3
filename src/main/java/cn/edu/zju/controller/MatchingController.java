@@ -5,7 +5,7 @@ import cn.edu.zju.bean.Sample;
 import cn.edu.zju.dao.AnnovarDao;
 import cn.edu.zju.dao.DrugLabelDao;
 import cn.edu.zju.dao.SampleDao;
-import cn.edu.zju.dbutils.DBUtils;
+import cn.edu.zju.service.AnnovarService;
 import cn.edu.zju.servlet.DispatchServlet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,10 +14,11 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.Part;
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 
 public class MatchingController {
@@ -27,6 +28,7 @@ public class MatchingController {
     private SampleDao sampleDao = new SampleDao();
     private AnnovarDao annovarDao = new AnnovarDao();
     private DrugLabelDao drugLabelDao = new DrugLabelDao();
+    private AnnovarService annovarService = new AnnovarService();
 
     public void register(DispatchServlet.Dispatcher dispatcher) {
         dispatcher.registerPostMapping("/upload", this::uploadVariantFile);
@@ -43,6 +45,8 @@ public class MatchingController {
     public void samples(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
         List<Sample> samples = sampleDao.findAll();
         request.setAttribute("samples", samples);
+        request.setAttribute("hasActiveStatus", samples.stream().anyMatch(sample ->
+                "uploading".equalsIgnoreCase(sample.getParseStatus()) || "processing".equalsIgnoreCase(sample.getParseStatus())));
         request.getRequestDispatcher("/views/samples.jsp").forward(request, response);
     }
 
@@ -59,6 +63,19 @@ public class MatchingController {
             response.sendRedirect("samples");
             return;
         }
+        Sample sample = sampleDao.findById(sampleId);
+        if (sample == null) {
+            response.sendRedirect("samples");
+            return;
+        }
+        String parseStatus = sample.getParseStatus();
+        if (parseStatus != null
+                && !parseStatus.trim().isEmpty()
+                && !"finished".equalsIgnoreCase(parseStatus)
+                && !"pending".equalsIgnoreCase(parseStatus)) {
+            response.sendRedirect("samples");
+            return;
+        }
         List<String> refGenes = annovarDao.getRefGenes(sampleId);
         if (refGenes.isEmpty()) {
             response.sendRedirect("samples");
@@ -67,7 +84,7 @@ public class MatchingController {
         List<DrugLabel> drugLabels = drugLabelDao.findAll();
         List<DrugLabel> matched = doMatch(refGenes, drugLabels);
         request.setAttribute("matched", matched);
-        request.setAttribute("sample", sampleDao.findById(sampleId));
+        request.setAttribute("sample", sample);
         request.getRequestDispatcher("/views/matching_index_search.jsp").forward(request, response);
     }
 
@@ -86,95 +103,42 @@ public class MatchingController {
         }
         return matchedLabels;
     }
-    private void handleAnnovarFile(Part filePart, int sampleId) throws IOException {
-        InputStream inputStream = filePart.getInputStream();
-        byte[] bytes = inputStream.readAllBytes();
-        String content = new String(bytes);
-        annovarDao.save(sampleId, content);
-    }
-    private List<String> handleVcfFile(Part filePart, int sampleId) throws IOException {
-        Set<String> genes = new LinkedHashSet<>();
-
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(filePart.getInputStream()))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                if (line.startsWith("#")) {
-                    continue;
-                }
-
-                String[] parts = line.split("\t");
-                if (parts.length < 8) {
-                    continue;
-                }
-
-                String chr = parts[0];
-                String pos = parts[1];
-                String ref = parts[3];
-                String alt = parts[4];
-                String info = parts[7];
-
-                log.info("VCF record: sampleId={}, chr={}, pos={}, ref={}, alt={}", sampleId, chr, pos, ref, alt);
-
-                genes.addAll(extractGenesFromInfo(info));
-            }
-        }
-
-        if (genes.isEmpty()) {
-            throw new IllegalArgumentException(
-                    "This VCF does not contain gene annotations. Please upload an annotated VCF or ANNOVAR output."
-            );
-        }
-
-        return new ArrayList<>(genes);
+    private Path saveUploadedFile(Part filePart, int sampleId, String inputType) throws IOException {
+        Path sampleDir = annovarService.createSampleWorkDir(sampleId);
+        String suffix = "vcf".equalsIgnoreCase(inputType) ? ".vcf" : ".txt";
+        Path uploadedFile = sampleDir.resolve("uploaded" + suffix);
+        Files.copy(filePart.getInputStream(), uploadedFile, StandardCopyOption.REPLACE_EXISTING);
+        return uploadedFile;
     }
 
-    private List<String> extractGenesFromInfo(String info) {
-        Set<String> genes = new LinkedHashSet<>();
+    private void processUploadedFileAsync(int sampleId, String inputType, Path uploadedFile) {
+        Thread worker = new Thread(() -> {
+            SampleDao workerSampleDao = new SampleDao();
+            AnnovarDao workerAnnovarDao = new AnnovarDao();
+            AnnovarService workerAnnovarService = new AnnovarService();
 
-        if (info == null || info.isEmpty()) {
-            return new ArrayList<>(genes);
-        }
-
-        String[] fields = info.split(";");
-
-        for (String field : fields) {
-            if (field.startsWith("ANN=")) {
-                String annValue = field.substring(4);
-                String[] annItems = annValue.split(",");
-
-                for (String ann : annItems) {
-                    String[] tokens = ann.split("\\|");
-                    if (tokens.length > 3) {
-                        String gene = tokens[3].trim();
-                        if (!gene.isEmpty() && !".".equals(gene)) {
-                            genes.add(gene);
-                        }
+            try {
+                workerSampleDao.updateParseStatus(sampleId, "processing");
+                if ("annovar".equalsIgnoreCase(inputType)) {
+                    String content = Files.readString(uploadedFile, StandardCharsets.UTF_8);
+                    workerAnnovarDao.save(sampleId, content);
+                } else if ("vcf".equalsIgnoreCase(inputType)) {
+                    String annovarContent = workerAnnovarService.annotateVcf(uploadedFile, sampleId);
+                    workerAnnovarDao.save(sampleId, annovarContent);
+                    if (workerAnnovarDao.getRefGenes(sampleId).isEmpty()) {
+                        throw new IllegalArgumentException("ANNOVAR completed, but no non-synonymous refGene records were found for matching.");
                     }
+                } else {
+                    throw new IllegalArgumentException("Unsupported input type: " + inputType);
                 }
-            } else if (field.startsWith("GENEINFO=")) {
-                String geneInfo = field.substring("GENEINFO=".length());
-                String[] geneItems = geneInfo.split("\\|");
-
-                for (String geneItem : geneItems) {
-                    String gene = geneItem.split(":")[0].trim();
-                    if (!gene.isEmpty() && !".".equals(gene)) {
-                        genes.add(gene);
-                    }
-                }
-            } else if (field.startsWith("GENE=")) {
-                String geneValue = field.substring("GENE=".length());
-                String[] geneItems = geneValue.split(",");
-
-                for (String gene : geneItems) {
-                    gene = gene.trim();
-                    if (!gene.isEmpty() && !".".equals(gene)) {
-                        genes.add(gene);
-                    }
-                }
+                workerSampleDao.updateParseStatus(sampleId, "finished");
+            } catch (Exception e) {
+                log.error("Background file processing failed for sampleId={}", sampleId, e);
+                workerSampleDao.updateParseStatus(sampleId, "failed");
             }
-        }
-
-        return new ArrayList<>(genes);
+        }, "sample-processing-" + sampleId);
+        worker.setDaemon(true);
+        worker.start();
     }
 
     public void uploadVariantFile(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
@@ -206,7 +170,7 @@ public class MatchingController {
         sample.setUploadedBy(uploadedBy);
         sample.setInputType(inputType);
         sample.setFileName(fileName);
-        sample.setParseStatus("pending");
+        sample.setParseStatus("uploading");
 
         int sampleId = sampleDao.save(sample);
 
@@ -215,32 +179,23 @@ public class MatchingController {
         log.info("uploadedBy = {}", uploadedBy);
         log.info("fileName = {}", fileName);
 
-        try {
-            if ("annovar".equalsIgnoreCase(inputType)) {
-                handleAnnovarFile(filePart, sampleId);
-                log.info("ANNOVAR upload selected");
-                response.sendRedirect("matching?sampleId=" + sampleId);
-                return;
-            } else if ("vcf".equalsIgnoreCase(inputType)) {
-                List<String> refGenes = handleVcfFile(filePart, sampleId);
-                List<DrugLabel> allDrugLabels = drugLabelDao.findAll();
-                List<DrugLabel> matchedLabels = doMatch(refGenes, allDrugLabels);
+        if (!"annovar".equalsIgnoreCase(inputType) && !"vcf".equalsIgnoreCase(inputType)) {
+            sampleDao.updateParseStatus(sampleId, "failed");
+            request.setAttribute("error", "Unsupported input type: " + inputType);
+            request.getRequestDispatcher("/views/matching_index_error.jsp").forward(request, response);
+            return;
+        }
 
-                request.setAttribute("sampleId", sampleId);
-                request.setAttribute("refGenes", refGenes);
-                request.setAttribute("matchedLabels", matchedLabels);
-                request.getRequestDispatcher("/views/matching_index_search.jsp").forward(request, response);
-                return;
-            } else {
-                request.setAttribute("error", "Unsupported input type: " + inputType);
-                request.getRequestDispatcher("/views/matching_index_error.jsp").forward(request, response);
-                return;
-            }
+        try {
+            Path uploadedFile = saveUploadedFile(filePart, sampleId, inputType);
+            sampleDao.updateParseStatus(sampleId, "processing");
+            processUploadedFileAsync(sampleId, inputType, uploadedFile);
+            response.sendRedirect("samples");
         } catch (Exception e) {
+            sampleDao.updateParseStatus(sampleId, "failed");
             log.error("File processing failed", e);
             request.setAttribute("error", e.getMessage());
             request.getRequestDispatcher("/views/matching_index_error.jsp").forward(request, response);
-            return;
         }
     }
 

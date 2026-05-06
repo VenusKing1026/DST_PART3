@@ -26,6 +26,12 @@ public class AppConfig {
                 this.jdbcUrl = properties.getProperty("jdbc.url");
                 this.jdbcUsername = properties.getProperty("jdbc.username");
                 this.jdbcPassword = properties.getProperty("jdbc.password");
+                this.annovarPerl = properties.getProperty("annovar.perl", "perl");
+                this.annovarTableAnnovar = properties.getProperty("annovar.table_annovar");
+                this.annovarHumanDb = properties.getProperty("annovar.humandb");
+                this.annovarBuildver = properties.getProperty("annovar.buildver", "hg19");
+                this.annovarWorkdir = properties.getProperty("annovar.workdir",
+                        System.getProperty("java.io.tmpdir") + "/dst-annovar");
             } catch (IOException e) {
                 log.info("", e);
             }
@@ -43,6 +49,11 @@ public class AppConfig {
     private String jdbcUrl;
     private String jdbcUsername;
     private String jdbcPassword;
+    private String annovarPerl;
+    private String annovarTableAnnovar;
+    private String annovarHumanDb;
+    private String annovarBuildver;
+    private String annovarWorkdir;
 
     public String getJdbcUrl() {
         return jdbcUrl;
@@ -66,5 +77,45 @@ public class AppConfig {
 
     public void setJdbcPassword(String jdbcPassword) {
         this.jdbcPassword = jdbcPassword;
+    }
+
+    public String getAnnovarPerl() {
+        return annovarPerl;
+    }
+
+    public void setAnnovarPerl(String annovarPerl) {
+        this.annovarPerl = annovarPerl;
+    }
+
+    public String getAnnovarTableAnnovar() {
+        return annovarTableAnnovar;
+    }
+
+    public void setAnnovarTableAnnovar(String annovarTableAnnovar) {
+        this.annovarTableAnnovar = annovarTableAnnovar;
+    }
+
+    public String getAnnovarHumanDb() {
+        return annovarHumanDb;
+    }
+
+    public void setAnnovarHumanDb(String annovarHumanDb) {
+        this.annovarHumanDb = annovarHumanDb;
+    }
+
+    public String getAnnovarBuildver() {
+        return annovarBuildver;
+    }
+
+    public void setAnnovarBuildver(String annovarBuildver) {
+        this.annovarBuildver = annovarBuildver;
+    }
+
+    public String getAnnovarWorkdir() {
+        return annovarWorkdir;
+    }
+
+    public void setAnnovarWorkdir(String annovarWorkdir) {
+        this.annovarWorkdir = annovarWorkdir;
     }
 }

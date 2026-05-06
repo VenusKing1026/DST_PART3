@@ -23,10 +23,14 @@ public class AnnovarDao extends BaseDao {
                 connection.setAutoCommit(false);
                 PreparedStatement preparedStatement = connection.prepareStatement(sql);
                 for (int i = 0; i < lines.length; i++) {
+                    if (lines[i] == null || lines[i].trim().isEmpty() || lines[i].startsWith("Chr\t") || lines[i].startsWith("#")) {
+                        continue;
+                    }
                     preparedStatement.setInt(1, sampleId);
-                    String[] split = lines[i].split("\\t");
+                    String[] split = lines[i].split("\\t", -1);
                     for (int j = 1; j <= 153; j++) {
-                        preparedStatement.setString(j + 1, split[j - 1]);
+                        String value = j <= split.length ? split[j - 1] : ".";
+                        preparedStatement.setString(j + 1, value);
                     }
                     StringJoiner otherInfo = new StringJoiner("\t");
                     for (int j = 154; j <= split.length; j++) {
