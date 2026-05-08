@@ -2,10 +2,12 @@ package cn.edu.zju.controller;
 
 import cn.edu.zju.bean.DrugLabel;
 import cn.edu.zju.bean.Sample;
+import cn.edu.zju.bean.User;
 import cn.edu.zju.dao.AnnovarDao;
 import cn.edu.zju.dao.DosingGuidelineDao;
 import cn.edu.zju.dao.DrugLabelDao;
 import cn.edu.zju.dao.GenotypeDao;
+import cn.edu.zju.dao.MatchingResultDao;
 import cn.edu.zju.dao.PhenotypeDao;
 import cn.edu.zju.dao.SampleDao;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import javax.servlet.RequestDispatcher;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 import javax.servlet.http.Part;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -28,6 +31,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -42,6 +46,8 @@ class MatchingControllerTest {
     private RequestDispatcher requestDispatcher;
     @Mock
     private Part part;
+    @Mock
+    private HttpSession session;
 
     @Mock
     private SampleDao sampleDao;
@@ -55,6 +61,8 @@ class MatchingControllerTest {
     private PhenotypeDao phenotypeDao;
     @Mock
     private DosingGuidelineDao dosingGuidelineDao;
+    @Mock
+    private MatchingResultDao matchingResultDao;
 
     private MatchingController controller;
 
@@ -67,6 +75,13 @@ class MatchingControllerTest {
         inject("genotypeDao", genotypeDao);
         inject("phenotypeDao", phenotypeDao);
         inject("dosingGuidelineDao", dosingGuidelineDao);
+        inject("matchingResultDao", matchingResultDao);
+
+        User mockUser = new User();
+        mockUser.setId(1);
+        lenient().when(request.getSession(false)).thenReturn(session);
+        lenient().when(session.getAttribute("currentUser")).thenReturn(mockUser);
+        lenient().when(request.getContextPath()).thenReturn("");
     }
 
     @Test
@@ -109,7 +124,7 @@ class MatchingControllerTest {
                 "", "", "", "contains CYP2C19 gene", "", "drug");
         when(drugLabelDao.findAll()).thenReturn(List.of(label));
 
-        Sample sample = new Sample(1, new Date(), "tester");
+        Sample sample = new Sample(1, 1, new Date(), "tester", "annovar", "test.txt", "finished");
         when(sampleDao.findById(1)).thenReturn(sample);
         when(request.getRequestDispatcher("/views/matching_index_search.jsp")).thenReturn(requestDispatcher);
 
@@ -121,41 +136,39 @@ class MatchingControllerTest {
     }
 
     @Test
-    void uploadAnnovarOutput_whenUploadedByBlank_forwardsError() throws Exception {
-        when(request.getParameter("uploaded_by")).thenReturn("  ");
+    void uploadVariantFile_whenInputTypeMissing_forwardsError() throws Exception {
+        when(request.getParameter("input_type")).thenReturn("");
         when(request.getRequestDispatcher("/views/matching_index_error.jsp")).thenReturn(requestDispatcher);
 
-        controller.uploadAnnovarOutput(request, response);
+        controller.uploadVariantFile(request, response);
 
-        verify(request).setAttribute("validateError", "Uploaded by can not be blank");
+        verify(request).setAttribute("error", "Input type is required.");
         verify(requestDispatcher).forward(request, response);
     }
 
     @Test
-    void uploadAnnovarOutput_whenPartMissing_forwardsError() throws Exception {
-        when(request.getParameter("uploaded_by")).thenReturn("tester");
-        when(request.getPart("annovar")).thenReturn(null);
+    void uploadVariantFile_whenUploadedByMissing_forwardsError() throws Exception {
+        when(request.getParameter("input_type")).thenReturn("annovar");
+        when(request.getParameter("uploaded_by")).thenReturn("");
         when(request.getRequestDispatcher("/views/matching_index_error.jsp")).thenReturn(requestDispatcher);
 
-        controller.uploadAnnovarOutput(request, response);
+        controller.uploadVariantFile(request, response);
 
-        verify(request).setAttribute("validateError", "annovar output file can not be blank");
+        verify(request).setAttribute("error", "Uploaded by is required.");
         verify(requestDispatcher).forward(request, response);
     }
 
     @Test
-    void uploadAnnovarOutput_whenValidInput_savesAndRedirects() throws Exception {
+    void uploadVariantFile_whenPartMissing_forwardsError() throws Exception {
+        when(request.getParameter("input_type")).thenReturn("annovar");
         when(request.getParameter("uploaded_by")).thenReturn("tester");
-        when(request.getPart("annovar")).thenReturn(part);
-        InputStream inputStream = new ByteArrayInputStream("test-content".getBytes(StandardCharsets.UTF_8));
-        when(part.getInputStream()).thenReturn(inputStream);
-        when(sampleDao.save("tester")).thenReturn(99);
+        when(request.getPart("variant_file")).thenReturn(null);
+        when(request.getRequestDispatcher("/views/matching_index_error.jsp")).thenReturn(requestDispatcher);
 
-        controller.uploadAnnovarOutput(request, response);
+        controller.uploadVariantFile(request, response);
 
-        verify(sampleDao).save("tester");
-        verify(annovarDao).save(99, "test-content");
-        verify(response).sendRedirect("matching?sampleId=99");
+        verify(request).setAttribute("error", "Please select a file.");
+        verify(requestDispatcher).forward(request, response);
     }
 
     private void inject(String fieldName, Object target) throws Exception {
