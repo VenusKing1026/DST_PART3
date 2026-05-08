@@ -15,7 +15,7 @@ public class UserDao extends BaseDao {
         AtomicReference<User> user = new AtomicReference<>();
         DBUtils.execSQL(connection -> {
             try {
-                String sql = "SELECT id, username, password FROM user WHERE username = ?";
+                String sql = "SELECT id, username, password_hash AS password FROM user WHERE username = ?";
                 PreparedStatement ps = connection.prepareStatement(sql);
                 ps.setString(1, username);
                 ResultSet rs = ps.executeQuery();
@@ -36,7 +36,7 @@ public class UserDao extends BaseDao {
         AtomicReference<User> user = new AtomicReference<>();
         DBUtils.execSQL(connection -> {
             try {
-                String sql = "SELECT id, username, password FROM user WHERE id = ?";
+                String sql = "SELECT id, username, password_hash AS password FROM user WHERE id = ?";
                 PreparedStatement ps = connection.prepareStatement(sql);
                 ps.setInt(1, id);
                 ResultSet rs = ps.executeQuery();
@@ -58,7 +58,7 @@ public class UserDao extends BaseDao {
         AtomicReference<Integer> generatedId = new AtomicReference<>(-1);
         DBUtils.execSQL(connection -> {
             try {
-                String sql = "INSERT INTO user (username, password) VALUES (?, ?)";
+                String sql = "INSERT INTO user (username, password_hash) VALUES (?, ?)";
                 PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
                 ps.setString(1, user.getUsername());
                 ps.setString(2, user.getPassword());
