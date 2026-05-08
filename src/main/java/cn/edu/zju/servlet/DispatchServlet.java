@@ -4,6 +4,7 @@ import cn.edu.zju.controller.AuthController;
 import cn.edu.zju.controller.IndexController;
 import cn.edu.zju.controller.KnowledgeBaseController;
 import cn.edu.zju.controller.MatchingController;
+import cn.edu.zju.controller.ReportController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,6 +59,9 @@ public class DispatchServlet extends HttpServlet {
 
         AuthController authController = new AuthController();
         authController.register(dispatcher);
+
+        ReportController reportController = new ReportController();
+        reportController.register(dispatcher);
     }
 
     @Override

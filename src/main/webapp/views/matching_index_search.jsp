@@ -66,6 +66,10 @@
                     <div>Uploaded at: ${sample.createdAt}</div>
                     <div>Uploaded by: ${sample.uploadedBy}</div>
                     <div>User ID: ${sample.userId}</div>
+
+                    <p style="margin-top: 12px;">
+                        <a href="downloadPdf?sampleId=${sample.id}" class="btn btn-primary">Download PDF Report</a>
+                    </p>
                 </div>
             </div>
 

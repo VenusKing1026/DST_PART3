@@ -13,6 +13,7 @@ import cn.edu.zju.dao.DosingGuidelineDao;
 import cn.edu.zju.dao.DrugLabelDao;
 import cn.edu.zju.dao.GenotypeDao;
 import cn.edu.zju.dao.GenotypeDao.DiplotypeResult;
+import cn.edu.zju.dao.MatchingResultDao;
 import cn.edu.zju.dao.PhenotypeDao;
 import cn.edu.zju.dao.SampleDao;
 import cn.edu.zju.service.AnnovarService;
@@ -46,6 +47,7 @@ public class MatchingController extends BaseController {   //改动1
     private PhenotypeDao phenotypeDao = new PhenotypeDao();
     private DosingGuidelineDao dosingGuidelineDao = new DosingGuidelineDao();
     private AnnovarService annovarService = new AnnovarService();
+    private MatchingResultDao matchingResultDao = new MatchingResultDao();
 
     public void register(DispatchServlet.Dispatcher dispatcher) {
         dispatcher.registerPostMapping("/upload", this::uploadVariantFile);
@@ -107,6 +109,7 @@ public class MatchingController extends BaseController {   //改动1
         }
         // PGx pipeline (V4.1 chromosome-aware)
         List<MatchingResult> matchingResults = runPgxPipeline(sampleId);
+        matchingResultDao.saveAll(sampleId, matchingResults);
         sampleDao.updateMatchingStatus(sampleId, "completed");
 
         request.setAttribute("matchingResults", matchingResults);

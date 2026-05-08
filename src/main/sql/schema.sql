@@ -247,3 +247,16 @@ create table genotype2phenotype
     function_category varchar(100) null
 );
 
+create table matching_result
+(
+    id int auto_increment primary key,
+    sample_id int not null,
+    gene varchar(20) null,
+    diplotype varchar(100) null,
+    phenotype varchar(100) null,
+    match_type varchar(20) null,
+    drug_name varchar(200) null,
+    source varchar(100) null,
+    summary_markdown text null
+);
+

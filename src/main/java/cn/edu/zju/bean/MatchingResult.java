@@ -4,6 +4,8 @@ import java.util.List;
 
 public class MatchingResult {
 
+    private Integer id;
+    private Integer sampleId;
     private String gene;
     private String diplotype;
     private String phenotype;
@@ -24,6 +26,12 @@ public class MatchingResult {
         this.metabolizerMatches = metabolizerMatches;
         this.generalMatches = generalMatches;
     }
+
+    public Integer getId() { return id; }
+    public void setId(Integer id) { this.id = id; }
+
+    public Integer getSampleId() { return sampleId; }
+    public void setSampleId(Integer sampleId) { this.sampleId = sampleId; }
 
     public String getGene() { return gene; }
     public void setGene(String gene) { this.gene = gene; }
