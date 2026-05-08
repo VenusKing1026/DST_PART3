@@ -15,6 +15,7 @@ import cn.edu.zju.dao.GenotypeDao;
 import cn.edu.zju.dao.GenotypeDao.DiplotypeResult;
 import cn.edu.zju.dao.PhenotypeDao;
 import cn.edu.zju.dao.SampleDao;
+import cn.edu.zju.service.AnnovarService;
 import cn.edu.zju.servlet.DispatchServlet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +26,10 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.Part;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -40,9 +45,10 @@ public class MatchingController {
     private GenotypeDao genotypeDao = new GenotypeDao();
     private PhenotypeDao phenotypeDao = new PhenotypeDao();
     private DosingGuidelineDao dosingGuidelineDao = new DosingGuidelineDao();
+    private AnnovarService annovarService = new AnnovarService();
 
     public void register(DispatchServlet.Dispatcher dispatcher) {
-        dispatcher.registerPostMapping("/upload", this::uploadAnnovarOutput);
+        dispatcher.registerPostMapping("/upload", this::uploadVariantFile);
         dispatcher.registerGetMapping("/matchingIndex", this::matchingIndex);
         dispatcher.registerGetMapping("/matching", this::matching);
         dispatcher.registerGetMapping("/samples", this::samples);
@@ -56,6 +62,8 @@ public class MatchingController {
     public void samples(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
         List<Sample> samples = sampleDao.findAll();
         request.setAttribute("samples", samples);
+        request.setAttribute("hasActiveStatus", samples.stream().anyMatch(sample ->
+                "uploading".equalsIgnoreCase(sample.getParseStatus()) || "processing".equalsIgnoreCase(sample.getParseStatus())));
         request.getRequestDispatcher("/views/samples.jsp").forward(request, response);
     }
 
@@ -72,7 +80,6 @@ public class MatchingController {
             response.sendRedirect("samples");
             return;
         }
-
         // legacy mode fallback
         if ("legacy".equals(request.getParameter("mode"))) {
             List<String> refGenes = annovarDao.getRefGenes(sampleId);
@@ -84,7 +91,7 @@ public class MatchingController {
             return;
         }
 
-        // PGx pipeline
+        // PGx pipeline (V4.1 chromosome-aware)
         List<MatchingResult> matchingResults = runPgxPipeline(sampleId);
         sampleDao.updateMatchingStatus(sampleId, "completed");
 
@@ -160,31 +167,100 @@ public class MatchingController {
         }
         return matchedLabels;
     }
-
-    public void uploadAnnovarOutput(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
-        String uploadedBy = request.getParameter("uploaded_by");
-        if (uploadedBy == null || uploadedBy.isBlank()) {
-            request.setAttribute("validateError", "Uploaded by can not be blank");
-            request.getRequestDispatcher("/views/matching_index_error.jsp").forward(request, response);
-            return;
-        }
-        Part requestPart = request.getPart("annovar");
-        if (requestPart == null) {
-            request.setAttribute("validateError", "annovar output file can not be blank");
-            request.getRequestDispatcher("/views/matching_index_error.jsp").forward(request, response);
-            return;
-        }
-        InputStream inputStream = requestPart.getInputStream();
-        byte[] bytes = inputStream.readAllBytes();
-        String content = new String(bytes);
-        int sampleId = sampleDao.save(uploadedBy);
-        try {
-            annovarDao.save(sampleId, content);
-        } catch (ArrayIndexOutOfBoundsException e) {
-            request.setAttribute("validateError", "annovar output file is invalid");
-            request.getRequestDispatcher("/views/matching_index_error.jsp").forward(request, response);
-            return;
-        }
-        response.sendRedirect("matching?sampleId=" + sampleId);
+    private Path saveUploadedFile(Part filePart, int sampleId, String inputType) throws IOException {
+        Path sampleDir = annovarService.createSampleWorkDir(sampleId);
+        String suffix = "vcf".equalsIgnoreCase(inputType) ? ".vcf" : ".txt";
+        Path uploadedFile = sampleDir.resolve("uploaded" + suffix);
+        Files.copy(filePart.getInputStream(), uploadedFile, StandardCopyOption.REPLACE_EXISTING);
+        return uploadedFile;
     }
+
+    private void processUploadedFileAsync(int sampleId, String inputType, Path uploadedFile) {
+        Thread worker = new Thread(() -> {
+            SampleDao workerSampleDao = new SampleDao();
+            AnnovarDao workerAnnovarDao = new AnnovarDao();
+            AnnovarService workerAnnovarService = new AnnovarService();
+
+            try {
+                workerSampleDao.updateParseStatus(sampleId, "processing");
+                if ("annovar".equalsIgnoreCase(inputType)) {
+                    String content = Files.readString(uploadedFile, StandardCharsets.UTF_8);
+                    workerAnnovarDao.save(sampleId, content);
+                } else if ("vcf".equalsIgnoreCase(inputType)) {
+                    String annovarContent = workerAnnovarService.annotateVcf(uploadedFile, sampleId);
+                    workerAnnovarDao.save(sampleId, annovarContent);
+                    if (workerAnnovarDao.getRefGenes(sampleId).isEmpty()) {
+                        throw new IllegalArgumentException("ANNOVAR completed, but no non-synonymous refGene records were found for matching.");
+                    }
+                } else {
+                    throw new IllegalArgumentException("Unsupported input type: " + inputType);
+                }
+                workerSampleDao.updateParseStatus(sampleId, "finished");
+            } catch (Exception e) {
+                log.error("Background file processing failed for sampleId={}", sampleId, e);
+                workerSampleDao.updateParseStatus(sampleId, "failed");
+            }
+        }, "sample-processing-" + sampleId);
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    public void uploadVariantFile(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
+        String inputType = request.getParameter("input_type");
+        String uploadedBy = request.getParameter("uploaded_by");
+        Part filePart = request.getPart("variant_file");
+
+        if (inputType == null || inputType.trim().isEmpty()) {
+            request.setAttribute("error", "Input type is required.");
+            request.getRequestDispatcher("/views/matching_index_error.jsp").forward(request, response);
+            return;
+        }
+
+        if (uploadedBy == null || uploadedBy.trim().isEmpty()) {
+            request.setAttribute("error", "Uploaded by is required.");
+            request.getRequestDispatcher("/views/matching_index_error.jsp").forward(request, response);
+            return;
+        }
+
+        if (filePart == null || filePart.getSize() == 0) {
+            request.setAttribute("error", "Please select a file.");
+            request.getRequestDispatcher("/views/matching_index_error.jsp").forward(request, response);
+            return;
+        }
+
+        String fileName = filePart.getSubmittedFileName();
+        Sample sample = new Sample();
+        sample.setCreatedAt(new Date());
+        sample.setUploadedBy(uploadedBy);
+        sample.setInputType(inputType);
+        sample.setFileName(fileName);
+        sample.setParseStatus("uploading");
+
+        int sampleId = sampleDao.save(sample);
+
+        log.info("sampleId = {}", sampleId);
+        log.info("inputType = {}", inputType);
+        log.info("uploadedBy = {}", uploadedBy);
+        log.info("fileName = {}", fileName);
+
+        if (!"annovar".equalsIgnoreCase(inputType) && !"vcf".equalsIgnoreCase(inputType)) {
+            sampleDao.updateParseStatus(sampleId, "failed");
+            request.setAttribute("error", "Unsupported input type: " + inputType);
+            request.getRequestDispatcher("/views/matching_index_error.jsp").forward(request, response);
+            return;
+        }
+
+        try {
+            Path uploadedFile = saveUploadedFile(filePart, sampleId, inputType);
+            sampleDao.updateParseStatus(sampleId, "processing");
+            processUploadedFileAsync(sampleId, inputType, uploadedFile);
+            response.sendRedirect("samples");
+        } catch (Exception e) {
+            sampleDao.updateParseStatus(sampleId, "failed");
+            log.error("File processing failed", e);
+            request.setAttribute("error", e.getMessage());
+            request.getRequestDispatcher("/views/matching_index_error.jsp").forward(request, response);
+        }
+    }
+
 }

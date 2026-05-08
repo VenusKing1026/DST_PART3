@@ -28,9 +28,9 @@ public class AnnovarDao extends BaseDao {
                 connection.setAutoCommit(false);
                 PreparedStatement preparedStatement = connection.prepareStatement(sql);
                 for (int i = 0; i < lines.length; i++) {
-                    // 跳过空行和表头行（ANNOVAR 输出第一行为列名，以 "Chr" 开头）
-                    if (lines[i].isBlank() || lines[i].startsWith("Chr\t")) continue;
-                    String[] split = lines[i].split("\\t");
+                    // 跳过空行、表头行（以 "Chr" 开头）和注释行（以 "#" 开头）
+                    if (lines[i] == null || lines[i].isBlank() || lines[i].startsWith("Chr\t") || lines[i].startsWith("#")) continue;
+                    String[] split = lines[i].split("\\t", -1);
                     // 跳过列数不足的行，防止 ArrayIndexOutOfBoundsException
                     if (split.length < 153) {
                         log.warn("Skipping line {}: only {} columns", i + 1, split.length);
@@ -38,7 +38,8 @@ public class AnnovarDao extends BaseDao {
                     }
                     preparedStatement.setInt(1, sampleId);
                     for (int j = 1; j <= 153; j++) {
-                        preparedStatement.setString(j + 1, split[j - 1]);
+                        String value = j <= split.length ? split[j - 1] : ".";
+                        preparedStatement.setString(j + 1, value);
                     }
                     StringJoiner otherInfo = new StringJoiner("\t");
                     for (int j = 154; j <= split.length; j++) {
