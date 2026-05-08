@@ -4,6 +4,7 @@ import java.util.Date;
 
 public class Sample {
     private int id;
+    private int userId;
     private Date createdAt;
     private String uploadedBy;
     private String inputType;
@@ -13,8 +14,9 @@ public class Sample {
     public Sample() {
     }
 
-    public Sample(int id, Date createdAt, String uploadedBy, String inputType, String fileName, String parseStatus) {
+    public Sample(int id, int userId, Date createdAt, String uploadedBy, String inputType, String fileName, String parseStatus) {
         this.id = id;
+        this.userId = userId;
         this.createdAt = createdAt;
         this.uploadedBy = uploadedBy;
         this.inputType = inputType;
@@ -22,50 +24,24 @@ public class Sample {
         this.parseStatus = parseStatus;
     }
 
-    public int getId() {
-        return id;
-    }
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
 
-    public void setId(int id) {
-        this.id = id;
-    }
+    public int getUserId() { return userId; }
+    public void setUserId(int userId) { this.userId = userId; }
 
-    public Date getCreatedAt() {
-        return createdAt;
-    }
+    public Date getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Date createdAt) { this.createdAt = createdAt; }
 
-    public void setCreatedAt(Date createdAt) {
-        this.createdAt = createdAt;
-    }
+    public String getUploadedBy() { return uploadedBy; }
+    public void setUploadedBy(String uploadedBy) { this.uploadedBy = uploadedBy; }
 
-    public String getUploadedBy() {
-        return uploadedBy;
-    }
+    public String getInputType() { return inputType; }
+    public void setInputType(String inputType) { this.inputType = inputType; }
 
-    public void setUploadedBy(String uploadedBy) {
-        this.uploadedBy = uploadedBy;
-    }
-    public String getInputType() {
-        return inputType;
-    }
+    public String getFileName() { return fileName; }
+    public void setFileName(String fileName) { this.fileName = fileName; }
 
-    public void setInputType(String inputType) {
-        this.inputType = inputType;
-    }
-
-    public String getFileName() {
-        return fileName;
-    }
-
-    public void setFileName(String fileName) {
-        this.fileName = fileName;
-    }
-
-    public String getParseStatus() {
-        return parseStatus;
-    }
-
-    public void setParseStatus(String parseStatus) {
-        this.parseStatus = parseStatus;
-    }
+    public String getParseStatus() { return parseStatus; }
+    public void setParseStatus(String parseStatus) { this.parseStatus = parseStatus; }
 }

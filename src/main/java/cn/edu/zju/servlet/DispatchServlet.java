@@ -1,5 +1,6 @@
 package cn.edu.zju.servlet;
 
+import cn.edu.zju.controller.AuthController;
 import cn.edu.zju.controller.IndexController;
 import cn.edu.zju.controller.KnowledgeBaseController;
 import cn.edu.zju.controller.MatchingController;
@@ -55,11 +56,14 @@ public class DispatchServlet extends HttpServlet {
         MatchingController matchingController = new MatchingController();
         matchingController.register(dispatcher);
 
+        AuthController authController = new AuthController();
+        authController.register(dispatcher);
     }
 
     @Override
     protected void service(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         String pathInfo = req.getPathInfo();
+        System.out.println(">>> DispatchServlet.service() called, pathInfo = " + pathInfo);  // 加了这行
         log.info("{}: {}", req.getMethod(), pathInfo);
         super.service(req, resp);
     }
@@ -81,6 +85,10 @@ public class DispatchServlet extends HttpServlet {
     private String getPathInfo(HttpServletRequest req) {
         String pathInfo = req.getPathInfo();
         if (pathInfo == null) {
+            // 用 getServletPath() 替代
+            pathInfo = req.getServletPath();
+        }
+        if (pathInfo == null || pathInfo.isEmpty()) {
             pathInfo = "/";
         }
         return pathInfo;

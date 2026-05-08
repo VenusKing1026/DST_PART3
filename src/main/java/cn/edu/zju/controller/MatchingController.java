@@ -35,7 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class MatchingController {
+public class MatchingController extends BaseController {   //改动1
 
     private static final Logger log = LoggerFactory.getLogger(MatchingController.class);
 
@@ -56,11 +56,21 @@ public class MatchingController {
     }
 
     public void matchingIndex(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
+        int userId = getCurrentUserId(request);
+        if (userId == -1) {
+            response.sendRedirect(request.getContextPath() + "/login");
+            return;
+        }
         request.getRequestDispatcher("/views/matching_index.jsp").forward(request, response);
     }
 
     public void samples(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
-        List<Sample> samples = sampleDao.findAll();
+        int userId = getCurrentUserId(request);
+        if (userId == -1) {
+            response.sendRedirect(request.getContextPath() + "/login");
+            return;
+        }
+        List<Sample> samples = sampleDao.findByUser(userId);  //改动2
         request.setAttribute("samples", samples);
         request.setAttribute("hasActiveStatus", samples.stream().anyMatch(sample ->
                 "uploading".equalsIgnoreCase(sample.getParseStatus()) || "processing".equalsIgnoreCase(sample.getParseStatus())));
@@ -68,6 +78,11 @@ public class MatchingController {
     }
 
     public void matching(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
+        int userId = getCurrentUserId(request);
+        if (userId == -1) {
+            response.sendRedirect(request.getContextPath() + "/login");
+            return;
+        }
         String sampleIdParameter = request.getParameter("sampleId");
         if (sampleIdParameter == null) {
             request.getRequestDispatcher("/views/samples.jsp").forward(request, response);
@@ -90,13 +105,12 @@ public class MatchingController {
             request.getRequestDispatcher("/views/matching_index_search.jsp").forward(request, response);
             return;
         }
-
         // PGx pipeline (V4.1 chromosome-aware)
         List<MatchingResult> matchingResults = runPgxPipeline(sampleId);
         sampleDao.updateMatchingStatus(sampleId, "completed");
 
         request.setAttribute("matchingResults", matchingResults);
-        request.setAttribute("sample", sampleDao.findById(sampleId));
+        request.setAttribute("sample", sampleDao.findById(sampleId, userId));
         request.getRequestDispatcher("/views/matching_index_search.jsp").forward(request, response);
     }
 
@@ -206,6 +220,12 @@ public class MatchingController {
     }
 
     public void uploadVariantFile(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
+        int userId = getCurrentUserId(request);
+        if (userId == -1) {
+            response.sendRedirect(request.getContextPath() + "/login");
+            return;
+        }
+
         String inputType = request.getParameter("input_type");
         String uploadedBy = request.getParameter("uploaded_by");
         Part filePart = request.getPart("variant_file");
@@ -230,6 +250,7 @@ public class MatchingController {
 
         String fileName = filePart.getSubmittedFileName();
         Sample sample = new Sample();
+        sample.setUserId(userId);
         sample.setCreatedAt(new Date());
         sample.setUploadedBy(uploadedBy);
         sample.setInputType(inputType);

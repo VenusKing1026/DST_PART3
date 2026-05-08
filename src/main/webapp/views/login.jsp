@@ -1,0 +1,61 @@
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ page isELIgnored="false" %>
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Login · Precision Medicine Matching System</title>
+
+    <link href="<%=request.getContextPath()%>/static/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <script src="<%=request.getContextPath()%>/static/jquery/jquery-3.4.1.js"></script>
+    <script src="<%=request.getContextPath()%>/static/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <link href="<%=request.getContextPath()%>/static/css/app.css" rel="stylesheet">
+    <style>
+        .login-container {
+            max-width: 400px;
+            margin: 100px auto;
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-dark fixed-top bg-dark flex-md-nowrap p-0 shadow">
+    <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="<%=request.getContextPath()%>/">Precision Medicine Matching System</a>
+</nav>
+
+<div class="container-fluid">
+    <div class="row">
+        <main role="main" class="col-md-12 ml-sm-auto px-4">
+            <div class="login-container">
+                <h2 class="text-center mb-4">Login</h2>
+
+                <%-- 错误提示 --%>
+                <% if (request.getAttribute("error") != null) { %>
+                    <div class="alert alert-danger" role="alert">
+                        ${error}
+                    </div>
+                <% } %>
+
+                <form method="post" action="<%=request.getContextPath()%>/login">
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input type="text" class="form-control" id="username" name="username"
+                               placeholder="Enter username" required autofocus>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" class="form-control" id="password" name="password"
+                               placeholder="Password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Login</button>
+                </form>
+
+                <div class="text-center mt-3">
+                    <a href="<%=request.getContextPath()%>/register">Don't have an account? Register</a>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+</body>
+</html>

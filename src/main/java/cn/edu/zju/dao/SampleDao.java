@@ -16,12 +16,15 @@ public class SampleDao extends BaseDao {
         AtomicInteger key = new AtomicInteger();
         DBUtils.execSQL(connection -> {
             try {
-                PreparedStatement preparedStatement = connection.prepareStatement("insert into sample(created_at, uploaded_by, input_type, file_name, parse_status) values (?,?,?,?,?)", Statement.RETURN_GENERATED_KEYS);
+                PreparedStatement preparedStatement = connection.prepareStatement(
+                        "insert into sample(created_at, uploaded_by, input_type, file_name, parse_status, user_id) values (?,?,?,?,?,?)",
+                        Statement.RETURN_GENERATED_KEYS);
                 preparedStatement.setTimestamp(1, new Timestamp(sample.getCreatedAt().getTime()));
                 preparedStatement.setString(2, sample.getUploadedBy());
                 preparedStatement.setString(3, sample.getInputType());
                 preparedStatement.setString(4, sample.getFileName());
                 preparedStatement.setString(5, sample.getParseStatus());
+                preparedStatement.setInt(6, sample.getUserId());
                 preparedStatement.executeUpdate();
                 ResultSet generatedKeys = preparedStatement.getGeneratedKeys();
                 while (generatedKeys.next()) {
@@ -34,24 +37,33 @@ public class SampleDao extends BaseDao {
         return key.get();
     }
 
+    public List<Sample> findByUser(int userId) {
+        List<Sample> samples = new ArrayList<>();
+        DBUtils.execSQL(connection -> {
+            try {
+                String sql = "SELECT id, user_id, created_at, uploaded_by, input_type, file_name, parse_status FROM sample WHERE user_id = ? ORDER BY created_at DESC";
+                PreparedStatement ps = connection.prepareStatement(sql);
+                ps.setInt(1, userId);
+                ResultSet rs = ps.executeQuery();
+                while (rs.next()) {
+                    samples.add(mapRowToSample(rs));
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        });
+        return samples;
+    }
+
     public List<Sample> findAll() {
         List<Sample> samples = new ArrayList<>();
         DBUtils.execSQL(connection -> {
             try {
-                PreparedStatement preparedStatement = connection.prepareStatement(
-                        "select id, created_at, uploaded_by, input_type, file_name, parse_status from sample"
-                );
-                ResultSet resultSet = preparedStatement.executeQuery();
-                while (resultSet.next()) {
-                    int sampleId = resultSet.getInt("id");
-                    Date createdAt = new Date(resultSet.getTimestamp("created_at").getTime());
-                    String uploadedBy = resultSet.getString("uploaded_by");
-                    String inputType = resultSet.getString("input_type");
-                    String fileName = resultSet.getString("file_name");
-                    String parseStatus = resultSet.getString("parse_status");
-
-                    Sample sample = new Sample(sampleId, createdAt, uploadedBy, inputType, fileName, parseStatus);
-                    samples.add(sample);
+                String sql = "SELECT id, user_id, created_at, uploaded_by, input_type, file_name, parse_status FROM sample ORDER BY created_at DESC";
+                PreparedStatement ps = connection.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery();
+                while (rs.next()) {
+                    samples.add(mapRowToSample(rs));
                 }
             } catch (SQLException e) {
                 e.printStackTrace();
@@ -79,18 +91,31 @@ public class SampleDao extends BaseDao {
         AtomicReference<Sample> sample = new AtomicReference<>();
         DBUtils.execSQL(connection -> {
             try {
-                PreparedStatement preparedStatement = connection.prepareStatement("select id, created_at, uploaded_by, input_type, file_name, parse_status from sample where id = ?");
-                preparedStatement.setInt(1, id);
-                ResultSet resultSet = preparedStatement.executeQuery();
-                if (resultSet.next()) {
-                    int sampleId = resultSet.getInt("id");
-                    Date createdAt = new Date(resultSet.getTimestamp("created_at").getTime());
-                    String uploadedBy = resultSet.getString("uploaded_by");
-                    String inputType = resultSet.getString("input_type");
-                    String fileName = resultSet.getString("file_name");
-                    String parseStatus = resultSet.getString("parse_status");
+                String sql = "SELECT id, user_id, created_at, uploaded_by, input_type, file_name, parse_status FROM sample WHERE id = ?";
+                PreparedStatement ps = connection.prepareStatement(sql);
+                ps.setInt(1, id);
+                ResultSet rs = ps.executeQuery();
+                if (rs.next()) {
+                    sample.set(mapRowToSample(rs));
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        });
+        return sample.get();
+    }
 
-                    sample.set(new Sample(sampleId, createdAt, uploadedBy, inputType, fileName, parseStatus));
+    public Sample findById(int id, int userId) {
+        AtomicReference<Sample> sample = new AtomicReference<>();
+        DBUtils.execSQL(connection -> {
+            try {
+                String sql = "SELECT id, user_id, created_at, uploaded_by, input_type, file_name, parse_status FROM sample WHERE id = ? AND user_id = ?";
+                PreparedStatement ps = connection.prepareStatement(sql);
+                ps.setInt(1, id);
+                ps.setInt(2, userId);
+                ResultSet rs = ps.executeQuery();
+                if (rs.next()) {
+                    sample.set(mapRowToSample(rs));
                 }
             } catch (SQLException e) {
                 e.printStackTrace();
@@ -102,7 +127,8 @@ public class SampleDao extends BaseDao {
     public void updateParseStatus(int id, String parseStatus) {
         DBUtils.execSQL(connection -> {
             try {
-                PreparedStatement preparedStatement = connection.prepareStatement("update sample set parse_status = ? where id = ?");
+                PreparedStatement preparedStatement = connection.prepareStatement(
+                        "update sample set parse_status = ? where id = ?");
                 preparedStatement.setString(1, parseStatus);
                 preparedStatement.setInt(2, id);
                 preparedStatement.executeUpdate();
@@ -110,5 +136,33 @@ public class SampleDao extends BaseDao {
                 e.printStackTrace();
             }
         });
+    }
+
+    public boolean delete(int id, int userId) {
+        AtomicReference<Boolean> result = new AtomicReference<>(false);
+        DBUtils.execSQL(connection -> {
+            try {
+                String sql = "DELETE FROM sample WHERE id = ? AND user_id = ?";
+                PreparedStatement ps = connection.prepareStatement(sql);
+                ps.setInt(1, id);
+                ps.setInt(2, userId);
+                int affected = ps.executeUpdate();
+                result.set(affected > 0);
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        });
+        return result.get();
+    }
+
+    private Sample mapRowToSample(ResultSet rs) throws SQLException {
+        int id = rs.getInt("id");
+        int userId = rs.getInt("user_id");
+        Date createdAt = new Date(rs.getTimestamp("created_at").getTime());
+        String uploadedBy = rs.getString("uploaded_by");
+        String inputType = rs.getString("input_type");
+        String fileName = rs.getString("file_name");
+        String parseStatus = rs.getString("parse_status");
+        return new Sample(id, userId, createdAt, uploadedBy, inputType, fileName, parseStatus);
     }
 }
