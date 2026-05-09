@@ -42,12 +42,12 @@ public class AnnovarService {
         List<String> command = new ArrayList<>();
         command.add(config.getAnnovarPerl());
         command.add(tableAnnovarScript);
-        command.add(inputVcf.toString());
+        command.add(inputVcf.toString().replace("\\", "/"));
         command.add(config.getAnnovarHumanDb());
         command.add("-buildver");
         command.add(config.getAnnovarBuildver());
         command.add("-out");
-        command.add(outputPrefix);
+        command.add(outputPrefix.replace("\\", "/"));
         command.add("-remove");
         command.add("-protocol");
         command.add("refGene");

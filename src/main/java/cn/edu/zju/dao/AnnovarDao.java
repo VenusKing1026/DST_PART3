@@ -29,13 +29,15 @@ public class AnnovarDao extends BaseDao {
                 PreparedStatement preparedStatement = connection.prepareStatement(sql);
                 for (int i = 0; i < lines.length; i++) {
                     // 跳过空行、表头行（以 "Chr" 开头）和注释行（以 "#" 开头）
-                    if (lines[i] == null || lines[i].isBlank() || lines[i].startsWith("Chr\t") || lines[i].startsWith("#")) continue;
+                    if (lines[i] == null || lines[i].isBlank() || lines[i].startsWith("Chr\t")
+                            || lines[i].startsWith("#"))
+                        continue;
                     String[] split = lines[i].split("\\t", -1);
                     // 跳过列数不足的行，防止 ArrayIndexOutOfBoundsException
-                    if (split.length < 153) {
-                        log.warn("Skipping line {}: only {} columns", i + 1, split.length);
-                        continue;
-                    }
+                    // if (split.length < 153) {
+                    // log.warn("Skipping line {}: only {} columns", i + 1, split.length);
+                    // continue;
+                    // }
                     preparedStatement.setInt(1, sampleId);
                     for (int j = 1; j <= 153; j++) {
                         String value = j <= split.length ? split[j - 1] : ".";
@@ -82,9 +84,11 @@ public class AnnovarDao extends BaseDao {
                     String gene = rs.getString(1);
                     String rsid = rs.getString(2);
 
-                    if (gene == null || gene.isBlank()) continue;
+                    if (gene == null || gene.isBlank())
+                        continue;
                     // TODO: 含分号的多基因注释（如 GENE1;GENE2）暂跳过，Phase 2 处理
-                    if (gene.contains(";")) continue;
+                    if (gene.contains(";"))
+                        continue;
 
                     // 获取其他字段
                     String chr = rs.getString(3);
@@ -136,9 +140,11 @@ public class AnnovarDao extends BaseDao {
                     while (rs.next()) {
                         String gene = rs.getString(1);
                         String rsid = rs.getString(2);
-                        if (gene == null || gene.isBlank()) continue;
+                        if (gene == null || gene.isBlank())
+                            continue;
                         // TODO: 含分号的多基因注释（如 GENE1;GENE2）暂跳过，Phase 2 处理
-                        if (gene.contains(";")) continue;
+                        if (gene.contains(";"))
+                            continue;
                         geneRsIds.computeIfAbsent(gene, k -> new ArrayList<>()).add(rsid);
                     }
                 } catch (SQLException e) {
@@ -173,14 +179,16 @@ public class AnnovarDao extends BaseDao {
                         String gene = rs.getString(1);
                         String rsid = rs.getString(2);
 
-                        if (gene == null || gene.isBlank()) continue;
-                        if (gene.contains(";")) continue;
+                        if (gene == null || gene.isBlank())
+                            continue;
+                        if (gene.contains(";"))
+                            continue;
 
                         String otherInfo = rs.getString(3);
                         String gt = extractGTFromOtherInfo(otherInfo);
 
                         // 创建包含rsid和GT的对象数组
-                        Object[] variantData = {rsid, gt};
+                        Object[] variantData = { rsid, gt };
 
                         geneVariants.computeIfAbsent(gene, k -> new ArrayList<>()).add(variantData);
                     }
@@ -194,6 +202,7 @@ public class AnnovarDao extends BaseDao {
 
     /**
      * 从Otherinfo字符串中提取GT信息
+     * 
      * @param otherInfo 包含VCF格式信息的字符串
      * @return 提取的GT信息，如果未找到则返回null
      */
@@ -202,7 +211,8 @@ public class AnnovarDao extends BaseDao {
             return null;
         }
 
-        // 查找GT字段模式：可能是 "GT:..." 或者类似 "GT:AD:DP:GD:GL:GQ:OG    0|1:2,1:2:.:-3.95,-0.60,-3.69:32.52:./." 的格式
+        // 查找GT字段模式：可能是 "GT:..." 或者类似 "GT:AD:DP:GD:GL:GQ:OG
+        // 0|1:2,1:2:.:-3.95,-0.60,-3.69:32.52:./." 的格式
         // 首先查找FORMAT信息和对应的值
 
         // 如果otherInfo中包含GT相关的格式，如 "GT:AD:DP..." 后跟 "0|1:2,1:..."
@@ -249,11 +259,13 @@ public class AnnovarDao extends BaseDao {
 
     /**
      * 验证是否是有效的GT格式
+     * 
      * @param gt GT字符串
      * @return 是否有效
      */
     private boolean isValidGTFormat(String gt) {
-        if (gt == null) return false;
+        if (gt == null)
+            return false;
         // 检查GT格式，如 0|0, 0|1, 1|0, 1|1, 0/0, 0/1 等
         return gt.matches("[0-9][\\|\\/][0-9]");
     }
@@ -278,9 +290,11 @@ public class AnnovarDao extends BaseDao {
                 while (rs.next()) {
                     String gene = rs.getString(1);
                     String rsid = rs.getString(2);
-                    if (gene == null || gene.isBlank()) continue;
+                    if (gene == null || gene.isBlank())
+                        continue;
                     // TODO: 含分号的多基因注释（如 GENE1;GENE2）暂跳过，Phase 2 处理
-                    if (gene.contains(";")) continue;
+                    if (gene.contains(";"))
+                        continue;
                     geneRsIds.computeIfAbsent(gene, k -> new ArrayList<>()).add(rsid);
                 }
             } catch (SQLException e) {

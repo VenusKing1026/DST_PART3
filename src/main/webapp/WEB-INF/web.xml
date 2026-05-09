@@ -10,8 +10,8 @@
         <servlet-class>cn.edu.zju.servlet.DispatchServlet</servlet-class>
         <multipart-config>
             <file-size-threshold>0</file-size-threshold>
-            <max-file-size>209715200</max-file-size>
-            <max-request-size>209715200</max-request-size>
+            <max-file-size>5242880000</max-file-size>
+            <max-request-size>5242880000</max-request-size>
         </multipart-config>
     </servlet>
 
