@@ -10,9 +10,7 @@ import java.nio.file.Paths;
 import java.util.Date;
 
 /**
- * 手动导入已存在的 ANNOVAR multianno 文件到数据库。
- * 用于 ANNOVAR 跑完后但 Java 处理失败时，不重新跑 ANNOVAR，直接导入已有结果。
- *
+ * 手动导入已存在的 ANNOVAR multianno 文件到数据库（精简表结构）。
  * 用法： java cn.edu.zju.AnnovarImportTest <sampleId> <multiannoFilePath>
  * 示例： java cn.edu.zju.AnnovarImportTest 1023 E:\tmp\dst-annovar\sample-1023\annovar.hg19_multianno.txt
  */
@@ -26,7 +24,6 @@ public class AnnovarImportTest {
             sampleId = Integer.parseInt(args[0]);
             multiannoFile = Paths.get(args[1]);
         } else {
-            // 默认值
             sampleId = 1023;
             multiannoFile = Paths.get("E:/tmp/dst-annovar/sample-1023/annovar.hg19_multianno.txt");
         }
@@ -37,7 +34,7 @@ public class AnnovarImportTest {
         }
 
         long fileSize = Files.size(multiannoFile);
-        System.out.println("=== ANNOVAR Import Test ===");
+        System.out.println("=== ANNOVAR Import Test (Streaming, new schema) ===");
         System.out.println("Sample ID: " + sampleId);
         System.out.println("File: " + multiannoFile.toAbsolutePath());
         System.out.println("Size: " + fileSize + " bytes (" + (fileSize / 1024 / 1024) + " MB)");
@@ -63,8 +60,8 @@ public class AnnovarImportTest {
             sampleDao.updateParseStatus(sampleId, "processing");
         }
 
-        // 调用新的流式 save(Path) 方法
-        System.out.println("Starting streaming import...");
+        // 调用流式 save(Path) 方法
+        System.out.println("Starting streaming import (exonic + non-synonymous only)...");
         long start = System.currentTimeMillis();
 
         AnnovarDao annovarDao = new AnnovarDao();
@@ -73,7 +70,6 @@ public class AnnovarImportTest {
         long elapsed = System.currentTimeMillis() - start;
         System.out.println("Import completed in " + (elapsed / 1000) + " seconds");
 
-        // 更新状态
         sampleDao.updateParseStatus(sampleId, "finished");
         System.out.println("Sample status updated to 'finished'");
         System.out.println("=== Done ===");

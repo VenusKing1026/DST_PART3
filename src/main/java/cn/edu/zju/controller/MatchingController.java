@@ -30,10 +30,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class MatchingController extends BaseController {   //改动1
@@ -121,6 +118,12 @@ public class MatchingController extends BaseController {   //改动1
      * PGx 匹配流水线（V4.1 染色体感知版本）：
      * annovar rsID + GT -> 拆分染色体 -> star allele -> diplotype -> phenotype -> dosing guideline
      */
+    /** 仅处理这些 PGx 相关基因，跳过非药物基因组基因 */
+    private static final Set<String> PGX_GENES = Set.of(
+            "CYP2C19", "CYP2C9", "CYP2D6", "CYP3A4", "CYP3A5", "CYP2B6",
+            "TPMT", "NUDT15", "DPYD", "UGT1A1", "SLCO1B1", "VKORC1", "ABCG2"
+    );
+
     private List<MatchingResult> runPgxPipeline(int sampleId) {
         // Step 1: 获取功能性变异（按基因分组，含 GT 信息）
         Map<String, List<VariantWithGT>> geneVariants = annovarDao.getVariantsWithGT(sampleId);
@@ -131,6 +134,13 @@ public class MatchingController extends BaseController {   //改动1
 
         for (Map.Entry<String, List<VariantWithGT>> entry : geneVariants.entrySet()) {
             String gene = entry.getKey();
+
+            // 跳过非 PGx 基因（如 TTN, MUC3A 等）
+            if (!PGX_GENES.contains(gene)) {
+                log.info("[PGx V4.1] gene={} | skipped: not in PGx gene list", gene);
+                continue;
+            }
+
             List<VariantWithGT> variantsWithGT = entry.getValue();
             log.info("[PGx V4.1] gene={} | variants count={}, rsIDs: {}",
                     gene, variantsWithGT.size(),
