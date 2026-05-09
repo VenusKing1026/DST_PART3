@@ -22,14 +22,14 @@ public class AnnovarService {
 
     private final AppConfig config = AppConfig.getInstance();
 
-    public String annotateVcf(Part filePart, int sampleId) throws IOException, InterruptedException {
+    public Path annotateVcf(Part filePart, int sampleId) throws IOException, InterruptedException {
         Path sampleDir = createSampleWorkDir(sampleId);
         Path inputVcf = sampleDir.resolve("input.vcf");
         Files.copy(filePart.getInputStream(), inputVcf, StandardCopyOption.REPLACE_EXISTING);
         return annotateVcf(inputVcf, sampleId);
     }
 
-    public String annotateVcf(Path inputVcf, int sampleId) throws IOException, InterruptedException {
+    public Path annotateVcf(Path inputVcf, int sampleId) throws IOException, InterruptedException {
         validateConfig();
 
         Path sampleDir = createSampleWorkDir(sampleId);
@@ -75,7 +75,7 @@ public class AnnovarService {
             log.warn("ANNOVAR exited with code {}, but result file was created. Output: {}", exitCode, processOutput);
         }
 
-        return Files.readString(multianno, StandardCharsets.UTF_8);
+        return multianno;
     }
 
     public Path createSampleWorkDir(int sampleId) throws IOException {

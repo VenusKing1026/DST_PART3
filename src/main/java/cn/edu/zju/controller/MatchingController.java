@@ -26,7 +26,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.Part;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -205,8 +204,8 @@ public class MatchingController extends BaseController {   //改动1
                     String content = Files.readString(uploadedFile, StandardCharsets.UTF_8);
                     workerAnnovarDao.save(sampleId, content);
                 } else if ("vcf".equalsIgnoreCase(inputType)) {
-                    String annovarContent = workerAnnovarService.annotateVcf(uploadedFile, sampleId);
-                    workerAnnovarDao.save(sampleId, annovarContent);
+                    Path multiannoFile = workerAnnovarService.annotateVcf(uploadedFile, sampleId);
+                    workerAnnovarDao.save(sampleId, multiannoFile);
                     if (workerAnnovarDao.getRefGenes(sampleId).isEmpty()) {
                         throw new IllegalArgumentException("ANNOVAR completed, but no non-synonymous refGene records were found for matching.");
                     }
