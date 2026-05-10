@@ -7,6 +7,10 @@
 --%>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ page isELIgnored="false" %>
+<%@ page import="cn.edu.zju.bean.User" %>
+<%
+    User currentUser = (User) session.getAttribute("currentUser");
+%>
 <!doctype html>
 <html lang="en">
 <head>
@@ -45,7 +49,7 @@
 
 <jsp:include page="header.jsp" />
 
-<!-- 改动2：侧边栏和触发区在 row 外面 -->
+<!-- 侧边栏和触发区 -->
 <div class="sidebar-trigger"></div>
 <jsp:include page="nav.jsp" >
     <jsp:param name="active" value="dashboard" />
@@ -56,12 +60,24 @@
 
         <main role="main" class="col-md-12 ml-sm-auto px-0 hero-container">
             <div class="hero-content text-center">
-                <h1 class="hero-title">Precision Medicine<br>Matching System</h1>
-                <p class="hero-subtitle mt-3">Integrating pharmacogenomics knowledge with clinical decision support</p>
-                <a href="<%=request.getContextPath()%>/login" class="btn btn-outline-primary btn-lg mt-4 px-5">Log In</a>
-                <p class="hero-footer mt-3">
-                    <a href="<%=request.getContextPath()%>/register" class="text-white-50">Don't have an account? Register</a>
-                </p>
+                <% if (currentUser == null) { %>
+                    <%-- 未登录：显示英雄页 --%>
+                    <h1 class="hero-title">Precision Medicine<br>Matching System</h1>
+                    <p class="hero-subtitle mt-3">Integrating pharmacogenomics knowledge with clinical decision support</p>
+                    <a href="<%=request.getContextPath()%>/login" class="btn btn-outline-primary btn-lg mt-4 px-5">Log In</a>
+                    <p class="hero-footer mt-3">
+                        <a href="<%=request.getContextPath()%>/register" class="text-white-50">Don't have an account? Register</a>
+                    </p>
+                <% } else { %>
+                    <%-- 已登录：显示欢迎和快捷入口 --%>
+                    <h1 class="hero-title">Welcome,<br><%= currentUser.getUsername() %></h1>
+                    <p class="hero-subtitle mt-3">What would you like to do today?</p>
+                    <div class="mt-4">
+                        <a href="<%=request.getContextPath()%>/samples" class="btn btn-outline-primary btn-lg mx-2 mb-2">My Samples</a>
+                        <a href="<%=request.getContextPath()%>/matchingIndex" class="btn btn-outline-primary btn-lg mx-2 mb-2">New Matching</a>
+                        <a href="<%=request.getContextPath()%>/drugs" class="btn btn-outline-primary btn-lg mx-2 mb-2">Knowledge Base</a>
+                    </div>
+                <% } %>
             </div>
         </main>
 
