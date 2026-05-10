@@ -124,7 +124,7 @@ class MatchingControllerTest {
                 "", "", "", "contains CYP2C19 gene", "", "drug");
         when(drugLabelDao.findAll()).thenReturn(List.of(label));
 
-        Sample sample = new Sample(1, 1, new Date(), "tester", "annovar", "test.txt", "finished");
+        Sample sample = new Sample(1, 1, new Date(), "tester", "annovar", "test.txt", "finished", "completed");
         when(sampleDao.findById(1)).thenReturn(sample);
         when(request.getRequestDispatcher("/views/matching_index_search.jsp")).thenReturn(requestDispatcher);
 

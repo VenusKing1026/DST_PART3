@@ -10,11 +10,12 @@ public class Sample {
     private String inputType;
     private String fileName;
     private String parseStatus;
+    private String matchingStatus;
 
     public Sample() {
     }
 
-    public Sample(int id, int userId, Date createdAt, String uploadedBy, String inputType, String fileName, String parseStatus) {
+    public Sample(int id, int userId, Date createdAt, String uploadedBy, String inputType, String fileName, String parseStatus, String matchingStatus) {
         this.id = id;
         this.userId = userId;
         this.createdAt = createdAt;
@@ -22,6 +23,7 @@ public class Sample {
         this.inputType = inputType;
         this.fileName = fileName;
         this.parseStatus = parseStatus;
+        this.matchingStatus = matchingStatus;
     }
 
     public int getId() { return id; }
@@ -44,4 +46,7 @@ public class Sample {
 
     public String getParseStatus() { return parseStatus; }
     public void setParseStatus(String parseStatus) { this.parseStatus = parseStatus; }
+
+    public String getMatchingStatus() { return matchingStatus; }
+    public void setMatchingStatus(String matchingStatus) { this.matchingStatus = matchingStatus; }
 }

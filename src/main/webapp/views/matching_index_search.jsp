@@ -62,13 +62,13 @@
             <%-- Sample Info：同学负责，暂不改动 --%>
             <div class="table-responsive">
                 <div class="alert alert-info" role="alert">
-                    <h4 class="alert-heading">Sample Info #${sample.id}</h4>
+                    <h4 class="alert-heading">Sample Info #${param.sampleId}</h4>
                     <div>Uploaded at: ${sample.createdAt}</div>
                     <div>Uploaded by: ${sample.uploadedBy}</div>
                     <div>User ID: ${sample.userId}</div>
 
                     <p style="margin-top: 12px;">
-                        <a href="downloadPdf?sampleId=${sample.id}" class="btn btn-primary">Download PDF Report</a>
+                        <a href="downloadPdf?sampleId=${param.sampleId}" class="btn btn-primary">Download PDF Report</a>
                     </p>
                 </div>
             </div>

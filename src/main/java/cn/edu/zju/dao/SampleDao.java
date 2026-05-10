@@ -41,7 +41,7 @@ public class SampleDao extends BaseDao {
         List<Sample> samples = new ArrayList<>();
         DBUtils.execSQL(connection -> {
             try {
-                String sql = "SELECT id, user_id, created_at, uploaded_by, input_type, file_name, parse_status FROM sample WHERE user_id = ? ORDER BY created_at DESC";
+                String sql = "SELECT id, user_id, created_at, uploaded_by, input_type, file_name, parse_status, matching_status FROM sample WHERE user_id = ? ORDER BY created_at DESC";
                 PreparedStatement ps = connection.prepareStatement(sql);
                 ps.setInt(1, userId);
                 ResultSet rs = ps.executeQuery();
@@ -59,7 +59,7 @@ public class SampleDao extends BaseDao {
         List<Sample> samples = new ArrayList<>();
         DBUtils.execSQL(connection -> {
             try {
-                String sql = "SELECT id, user_id, created_at, uploaded_by, input_type, file_name, parse_status FROM sample ORDER BY created_at DESC";
+                String sql = "SELECT id, user_id, created_at, uploaded_by, input_type, file_name, parse_status, matching_status FROM sample ORDER BY created_at DESC";
                 PreparedStatement ps = connection.prepareStatement(sql);
                 ResultSet rs = ps.executeQuery();
                 while (rs.next()) {
@@ -91,7 +91,7 @@ public class SampleDao extends BaseDao {
         AtomicReference<Sample> sample = new AtomicReference<>();
         DBUtils.execSQL(connection -> {
             try {
-                String sql = "SELECT id, user_id, created_at, uploaded_by, input_type, file_name, parse_status FROM sample WHERE id = ?";
+                String sql = "SELECT id, user_id, created_at, uploaded_by, input_type, file_name, parse_status, matching_status FROM sample WHERE id = ?";
                 PreparedStatement ps = connection.prepareStatement(sql);
                 ps.setInt(1, id);
                 ResultSet rs = ps.executeQuery();
@@ -109,7 +109,7 @@ public class SampleDao extends BaseDao {
         AtomicReference<Sample> sample = new AtomicReference<>();
         DBUtils.execSQL(connection -> {
             try {
-                String sql = "SELECT id, user_id, created_at, uploaded_by, input_type, file_name, parse_status FROM sample WHERE id = ? AND user_id = ?";
+                String sql = "SELECT id, user_id, created_at, uploaded_by, input_type, file_name, parse_status, matching_status FROM sample WHERE id = ? AND user_id = ?";
                 PreparedStatement ps = connection.prepareStatement(sql);
                 ps.setInt(1, id);
                 ps.setInt(2, userId);
@@ -163,6 +163,7 @@ public class SampleDao extends BaseDao {
         String inputType = rs.getString("input_type");
         String fileName = rs.getString("file_name");
         String parseStatus = rs.getString("parse_status");
-        return new Sample(id, userId, createdAt, uploadedBy, inputType, fileName, parseStatus);
+        String matchingStatus = rs.getString("matching_status");
+        return new Sample(id, userId, createdAt, uploadedBy, inputType, fileName, parseStatus, matchingStatus);
     }
 }
