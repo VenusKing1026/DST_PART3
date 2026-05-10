@@ -40,26 +40,33 @@
         }
     </style>
 </head>
-<body>
+
+<body class="index-page">
+
 <nav class="navbar navbar-dark fixed-top bg-dark flex-md-nowrap p-0 shadow">
     <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="#">Precision Medicine Matching System</a>
-
 </nav>
+
+<!-- 改动2：侧边栏和触发区在 row 外面 -->
+<div class="sidebar-trigger"></div>
+<jsp:include page="nav.jsp" >
+    <jsp:param name="active" value="dashboard" />
+</jsp:include>
 
 <div class="container-fluid">
     <div class="row">
-        <jsp:include page="nav.jsp" >
-            <jsp:param name="active" value="dashboard" />
-        </jsp:include>
 
-        <main role="main" class="col-md-9 ml-sm-auto col-lg-10 px-4">
-            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                <h2>Dashboard</h2>
-            </div>
-            <div class="table-responsive">
-                Welcome to use Precision Medicine Matching System
+        <main role="main" class="col-md-12 ml-sm-auto px-0 hero-container">
+            <div class="hero-content text-center">
+                <h1 class="hero-title">Precision Medicine<br>Matching System</h1>
+                <p class="hero-subtitle mt-3">Integrating pharmacogenomics knowledge with clinical decision support</p>
+                <a href="<%=request.getContextPath()%>/login" class="btn btn-outline-primary btn-lg mt-4 px-5">Log In</a>
+                <p class="hero-footer mt-3">
+                    <a href="<%=request.getContextPath()%>/register" class="text-white-50">Don't have an account? Register</a>
+                </p>
             </div>
         </main>
+
     </div>
 </div>
 </body>
