@@ -43,9 +43,10 @@ public class AnnovarDao extends BaseDao {
                         connection.commit();
                     }
                 }
+                preparedStatement.executeBatch();
                 connection.commit();
             } catch (SQLException e) {
-                e.printStackTrace();
+                throw new RuntimeException("Failed to save ANNOVAR output for sampleId=" + sampleId, e);
             }
         });
     }

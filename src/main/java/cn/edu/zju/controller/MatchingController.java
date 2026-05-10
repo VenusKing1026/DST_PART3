@@ -88,7 +88,7 @@ public class MatchingController {
         request.getRequestDispatcher("/views/matching_index_search.jsp").forward(request, response);
     }
 
-    private List<DrugLabel> doMatch(List<String> refGenes, List<DrugLabel> drugLabels) {
+    List<DrugLabel> doMatch(List<String> refGenes, List<DrugLabel> drugLabels) {
         List<DrugLabel> matchedLabels = new ArrayList<>();
         for (DrugLabel drugLabel : drugLabels) {
             boolean matched = false;

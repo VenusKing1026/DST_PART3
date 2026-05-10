@@ -38,12 +38,14 @@ public class AnnovarService {
         Path tableAnnovar = Paths.get(config.getAnnovarTableAnnovar());
         Path tableAnnovarDir = tableAnnovar.getParent();
         String tableAnnovarScript = tableAnnovar.getFileName().toString();
-        String outputPrefix = sampleDir.resolve("annovar").toString();
+        String inputVcfPath = normalizeAnnovarPath(inputVcf);
+        String humanDbPath = normalizeAnnovarPath(Paths.get(config.getAnnovarHumanDb()));
+        String outputPrefix = normalizeAnnovarPath(sampleDir.resolve("annovar"));
         List<String> command = new ArrayList<>();
         command.add(config.getAnnovarPerl());
         command.add(tableAnnovarScript);
-        command.add(inputVcf.toString());
-        command.add(config.getAnnovarHumanDb());
+        command.add(inputVcfPath);
+        command.add(humanDbPath);
         command.add("-buildver");
         command.add(config.getAnnovarBuildver());
         command.add("-out");
@@ -136,5 +138,9 @@ public class AnnovarService {
 
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    private String normalizeAnnovarPath(Path path) {
+        return path.toAbsolutePath().normalize().toString().replace('\\', '/');
     }
 }
