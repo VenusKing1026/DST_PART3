@@ -8,7 +8,7 @@
 
     <ul class="navbar-nav navbar-nav-right d-flex flex-row">
         <% if (currentUser == null) { %>
-            <li class="nav-item">
+            <li class="nav-item mr-3">
                 <a class="nav-link" href="<%=request.getContextPath()%>/login">Login</a>
             </li>
             <li class="nav-item">

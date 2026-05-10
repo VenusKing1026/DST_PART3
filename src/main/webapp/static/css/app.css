@@ -1,5 +1,8 @@
 body {
-    font-size: .875rem;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: .85rem;
+    color: #333;
+    background-color: #fff;
 }
 
 .feather {
@@ -19,7 +22,8 @@ body {
     left: 0;
     z-index: 100; /* Behind the navbar */
     padding: 48px 0 0; /* Height of navbar */
-    box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+    background-color: #f4f6f8;                      /* NEW：浅灰背景 */
+    box-shadow: inset -1px 0 0 rgba(0, 0, 0, .06);  /* NEW：更淡的阴影 */
 }
 
 .sidebar-sticky {
@@ -39,8 +43,16 @@ body {
 }
 
 .sidebar .nav-link {
-    font-weight: 500;
+    font-weight: 400;                               /* NEW：不加粗 */
+    font-size: 0.82rem;                             /* NEW：稍小 */
     color: #333;
+    padding: 6px 16px;                              /* NEW：调整间距 */
+    border-left: 3px solid transparent;             /* NEW：预留选中左边框 */
+}
+
+.sidebar .nav-link:hover {
+    background-color: #e8ecf0;                      /* NEW：悬停浅灰 */
+    border-left-color: #ccc;                        /* NEW：悬停灰色边 */
 }
 
 .sidebar .nav-link .feather {
@@ -49,7 +61,10 @@ body {
 }
 
 .sidebar .nav-link.active {
-    color: #007bff;
+    color: #1a3a5c;                                 /* NEW：深蓝文字 */
+    background-color: #e4eaf0;                      /* NEW：选中背景 */
+    border-left-color: #1a3a5c;                     /* NEW：选中深蓝左边框 */
+    font-weight: 500;                               /* NEW：选中稍加粗 */
 }
 
 .sidebar .nav-link:hover .feather,
@@ -58,8 +73,11 @@ body {
 }
 
 .sidebar-heading {
-    font-size: .75rem;
+    font-size: .7rem;                               /* NEW：更小 */
     text-transform: uppercase;
+    color: #888;                                    /* NEW：灰色 */
+    letter-spacing: 0.05em;                         /* NEW：字间距 */
+    padding: 8px 16px;                              /* NEW：内边距 */
 }
 
 /*
@@ -68,11 +86,13 @@ body {
 
 [role="main"] {
     padding-top: 133px; /* Space for fixed navbar */
+    padding-left: 28px;                             /* NEW */
+    padding-right: 28px;                            /* NEW */
 }
 
 @media (min-width: 768px) {
     [role="main"] {
-        padding-top: 48px; /* Space for fixed navbar */
+        padding-top: 60px; /* Space for fixed navbar，NEW：拉大标题与顶栏距离 */        /* NEW：多给一点呼吸空间 */
     }
 }
 
@@ -81,11 +101,11 @@ body {
  */
 
 .navbar-brand {
-    padding-top: .75rem;
-    padding-bottom: .75rem;
-    font-size: 1rem;
-    background-color: rgba(0, 0, 0, .25);
-    box-shadow: inset -1px 0 0 rgba(0, 0, 0, .25);
+    padding-top: 0.5rem;                            /* NEW：压扁 */
+    padding-bottom: 0.5rem;                         /* NEW */
+    font-size: 0.9rem;                              /* NEW */
+    background-color: rgba(0, 0, 0, .35);           /* NEW：更深 */
+    box-shadow: inset -1px 0 0 rgba(0, 0, 0, .15);  /* NEW */
 }
 
 .navbar .form-control {
@@ -103,4 +123,124 @@ body {
 .form-control-dark:focus {
     border-color: transparent;
     box-shadow: 0 0 0 3px rgba(255, 255, 255, .25);
+}
+
+/* ========== 页面标题样式 ========== NEW */
+.page-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1a3a5c;
+    margin-bottom: 0;
+}
+
+.page-title-divider {
+    border: none;
+    height: 0;
+    border-top: 1px solid #1a3a5c;
+    border-bottom: 1px solid #cbd5e0;
+    margin-top: 8px;
+    margin-bottom: 20px;
+}
+
+/* ========== Index 英雄页 ========== */
+body.index-page {
+    background: linear-gradient(180deg, #e2e6eb 2%, #ffffff 50%, #003366 100%);
+    min-height: 100vh;
+}
+
+.hero-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+.hero-title {
+    color: #1a1a1a;
+    font-size: 3rem;
+    font-weight: 700;
+    letter-spacing: -1px;
+}
+
+.hero-subtitle {
+    color: #555;
+    font-size: 1.15rem;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.hero-footer {
+    font-size: 0.9rem;
+}
+
+/* ========== 侧边栏：index 页隐藏，戳边缘滑出 ========== */
+body.index-page .sidebar {
+    display: block !important;
+    position: fixed !important;
+    flex: none !important;
+    max-width: 250px !important;
+    width: 250px !important;
+    left: -250px !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    margin: 0 !important;
+    padding: 48px 0 0 !important;
+    transition: left 0.3s ease !important;
+    z-index: 100 !important;
+    box-shadow: inset -1px 0 0 rgba(0, 0, 0, .06) !important;
+}
+
+.sidebar-trigger {
+    display: none;
+}
+
+body.index-page .sidebar-trigger {
+    display: block;
+    position: fixed;
+    left: 0;
+    top: 15%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 60px;
+    background: rgba(0, 0, 128, 0.5);
+    border-radius: 0 8px 8px 0;
+    z-index: 200;
+    cursor: pointer;
+    transition: background 0.3s ease, width 0.3s ease;
+}
+
+body.index-page .sidebar-trigger:hover {
+    background: rgba(255, 255, 255, 0.7);
+    width: 10px;
+}
+
+body.index-page .sidebar-trigger:hover ~ .sidebar,
+body.index-page .sidebar:hover {
+    left: 0 !important;
+}
+
+/* ========== 表格样式 ========== */
+.table thead th {
+    background-color: #1a3a5c;                      /* NEW：深蓝表头 */
+    color: #fff;                                     /* NEW：白字 */
+    font-weight: 500;                                /* NEW */
+    font-size: 0.8rem;                               /* NEW */
+    text-transform: none;                            /* NEW：不全大写 */
+    letter-spacing: 0.02em;                          /* NEW */
+    padding: 10px 12px;                              /* NEW */
+    border: none;                                    /* NEW */
+}
+
+.table td {
+    padding: 8px 12px;                               /* NEW：紧凑 */
+    color: #333;
+    border-top: 1px solid #e5e7ea;                  /* NEW：浅灰分隔线 */
+    vertical-align: middle;
+    font-size: 0.85rem;                              /* NEW */
+}
+
+/* NEW：悬停极浅蓝 */
+.table-hover tbody tr:hover {
+    background-color: #f2f5f8;
 }
